@@ -14,7 +14,7 @@
 
         @page {
             size: a4;
-            margin: 2cm;
+            margin: 1cm;
         }
         
         body {
@@ -70,13 +70,15 @@
 
         .alternativas {
             margin-left: 15px;
+            line-height: 1;
         }
         
         .alternativa {
-            margin-bottom: 4px;
+            margin-bottom: 0px;
+            padding-bottom: 1px;
             text-align: justify;
             display: flex;
-            align-items: baseline;
+            align-items: center;
         }
 
         .alternativa .item {
@@ -90,14 +92,15 @@
             background-color: #000;
             color: #fff;
             border-radius: 50%;
-            line-height: 16px;
-            display: inline-flex;
+            display: flex;
             justify-content: center;
             align-items: center;
         }
 
         .alternativa .conteudo {
             flex: 1;
+            padding-top: 0;  
+            line-height: 1.2;
         }
                 
         img {
