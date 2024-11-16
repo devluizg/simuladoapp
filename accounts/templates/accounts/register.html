@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Registro - SimuladoApp{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Mensagens -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Formulário de Registro -->
+        <div id="register-form" class="card bg-dark text-light">
+            <div class="card-header">
+                <h3 class="text-center">Registro</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" id="registration-form">
+                    {% csrf_token %}
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong>Erro!</strong> Por favor, corrija os erros abaixo.
+                            {{ form.errors }}
+                        </div>
+                    {% endif %}
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.first_name.id_for_label }}" class="form-label">Nome</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.last_name.id_for_label }}" class="form-label">Sobrenome</label>
+                            {{ form.last_name }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
+                        {{ form.email }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.password1.id_for_label }}" class="form-label">Senha</label>
+                        {{ form.password1 }}
+                        <div class="form-text text-light">
+                            A senha deve ter pelo menos 8 caracteres e conter letras maiúsculas, minúsculas, números e caracteres especiais.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.password2.id_for_label }}" class="form-label">Confirme a Senha</label>
+                        {{ form.password2 }}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            Registrar <i class="bi bi-person-plus-fill"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <p class="mb-0">
+                    Já tem uma conta? 
+                    <a href="{% url 'accounts:login' %}" class="text-light">
+                        Faça login
+                    </a>
+                </p>
+                <p class="mt-2 mb-0">
+                    <a href="#" class="text-light" data-bs-toggle="modal" data-bs-target="#resendModal">
+                        Não recebeu o email de ativação?
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Reenvio -->
+<div class="modal fade" id="resendModal" tabindex="-1" aria-labelledby="resendModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resendModalLabel">Reenviar Email de Ativação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="resend-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="resend_email" value="true">
+                    <div class="mb-3">
+                        <label for="resend_email_input" class="form-label">Email</label>
+                        <input type="email" class="form-control bg-dark text-light" id="resend_email_input" name="email" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            Reenviar Email <i class="bi bi-envelope"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Adiciona classes do Bootstrap aos campos do formulário
+    const formFields = [
+        '{{ form.first_name.id_for_label }}',
+        '{{ form.last_name.id_for_label }}',
+        '{{ form.email.id_for_label }}',
+        '{{ form.password1.id_for_label }}',
+        '{{ form.password2.id_for_label }}'
+    ];
+
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.classList.add('form-control', 'bg-dark', 'text-light');
+        }
+    });
+
+    // Manipula o envio do formulário principal
+    const form = document.getElementById('registration-form');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            const response = await fetch(window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Mostra mensagem de sucesso
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <strong><i class="bi bi-check-circle-fill"></i> Sucesso!</strong> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                form.parentNode.insertBefore(alertDiv, form);
+                form.reset();
+            } else {
+                // Mostra mensagem de erro
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Erro!</strong> ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                form.parentNode.insertBefore(alertDiv, form);
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+        }
+    });
+});
+</script>
+{% endblock %}

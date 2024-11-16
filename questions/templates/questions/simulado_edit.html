@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Editar Simulado - SimuladoApp{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<style>
+    .questao-preview {
+        max-height: 3.6em;  
+        overflow: hidden;
+        display: -webkit-box;
+        display: box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        box-orient: vertical;
+        font-size: 0.9em;
+        color: #adb5bd;
+        margin-top: 0.5rem;
+    }
+
+    .questao-item {
+        transition: all 0.3s ease;
+    }
+
+    .questao-item:hover {
+        transform: translateX(5px);
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    .questao-info {
+        flex-grow: 1;
+        min-width: 0;  /* Permite que o texto seja truncado */
+    }
+
+    .questao-badges {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .nivel-badge {
+        font-size: 0.75em;
+    }
+
+    .nivel-facil { background-color: #198754 !important; }
+    .nivel-medio { background-color: #ffc107 !important; }
+    .nivel-dificil { background-color: #dc3545 !important; }
+
+    .actions-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .drag-handle {
+        cursor: move;
+        color: #6c757d;
+        padding: 0.25rem;
+    }
+
+    .drag-handle:hover {
+        color: #fff;
+    }
+
+    #questoes-selecionadas .questao-item {
+        border-left: 3px solid #0d6efd !important;
+    }
+
+    #questoes-disponiveis .questao-item {
+        border-left: 3px solid #198754 !important;
+    }
+
+    .empty-state {
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 0.5rem;
+        padding: 2rem;
+        text-align: center;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Informações do Simulado -->
+    <div class="col-12 mb-4">
+        <div class="card bg-dark text-light">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0">{{ simulado.titulo }}</h3>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-success" id="salvar-simulado">
+                            <i class="bi bi-save"></i> Salvar Alterações
+                        </button>
+                        <a href="{% url 'questions:gerar_pdf' simulado.pk %}" class="btn btn-outline-light">
+                            <i class="bi bi-file-pdf"></i> Gerar PDF
+                        </a>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editarInfoModal">
+                            <i class="bi bi-pencil"></i> Editar Informações
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="simulado-form">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Questões:</strong> <span id="questoes-count">{{ simulado.questoes.count }}</span>/45</p>
+                            <p><strong>Criado em:</strong> {{ simulado.data_criacao|date:"d/m/Y" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Última modificação:</strong> {{ simulado.ultima_modificacao|date:"d/m/Y H:i" }}</p>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área de Questões -->
+    <div class="col-md-6">
+        <div class="card bg-dark text-light">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-list-check"></i> Questões do Simulado</h4>
+            </div>
+            <div class="card-body">
+                <div id="questoes-selecionadas" class="list-group">
+                    {% for questao in questoes_selecionadas %}
+                        <div class="list-group-item bg-dark text-light questao-item mb-2 border border-light" 
+                             data-id="{{ questao.id }}">
+                            <div class="d-flex align-items-start">
+                                <div class="drag-handle me-2">
+                                    <i class="bi bi-grip-vertical"></i>
+                                </div>
+                                <div class="questao-info">
+                                    <div class="questao-badges">
+                                        <span class="badge bg-secondary">{{ forloop.counter }}</span>
+                                        <span class="badge bg-primary">{{ questao.disciplina }}</span>
+                                        <span class="badge bg-info">{{ questao.conteudo }}</span>
+                                        <span class="badge nivel-badge 
+                                            {% if questao.nivel_dificuldade == 'F' %}nivel-facil
+                                            {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
+                                            {% else %}nivel-dificil{% endif %}">
+                                            {{ questao.get_nivel_dificuldade_display }}
+                                        </span>
+                                    </div>
+                                    <div class="questao-preview">
+                                        {{ questao.enunciado|safe|truncatewords:30 }}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger ms-2 remover-questao">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if not questoes_selecionadas %}
+                    <div class="empty-state" id="empty-state">
+                        <i class="bi bi-arrow-right-circle"></i>
+                        <p class="mb-0">Arraste questões aqui ou use o botão + para adicionar</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Banco de Questões -->
+    <div class="col-md-6">
+        <div class="card bg-dark text-light">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-database"></i> Banco de Questões</h4>
+                <div class="mt-2">
+                    <input type="text" id="busca-questoes" class="form-control bg-dark text-light" 
+                           placeholder="Buscar por disciplina, conteúdo ou nível...">
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="questoes-disponiveis" class="list-group">
+                    {% for questao in questoes_disponiveis %}
+                        <div class="list-group-item bg-dark text-light questao-item mb-2 border border-light questao-disponivel" 
+                             data-id="{{ questao.id }}"
+                             data-disciplina="{{ questao.disciplina|lower }}"
+                             data-conteudo="{{ questao.conteudo|lower }}"
+                             data-nivel="{{ questao.get_nivel_dificuldade_display|lower }}">
+                            <div class="d-flex align-items-start">
+                                <div class="questao-info">
+                                    <div class="questao-badges">
+                                        <span class="badge bg-primary">{{ questao.disciplina }}</span>
+                                        <span class="badge bg-info">{{ questao.conteudo }}</span>
+                                        <span class="badge nivel-badge 
+                                            {% if questao.nivel_dificuldade == 'F' %}nivel-facil
+                                            {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
+                                            {% else %}nivel-dificil{% endif %}">
+                                            {{ questao.get_nivel_dificuldade_display }}
+                                        </span>
+                                    </div>
+                                    <div class="questao-preview">
+                                        {{ questao.enunciado|safe|truncatewords:30 }}
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-outline-success ms-2 adicionar-questao">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Informações -->
+<div class="modal fade" id="editarInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Informações do Simulado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post">
+                    {% csrf_token %}
+                    {{ form.as_p }}
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="salvar-info">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const questoesSelecionadas = document.getElementById('questoes-selecionadas');
+    const questoesDisponiveis = document.getElementById('questoes-disponiveis');
+    const buscaInput = document.getElementById('busca-questoes');
+    const emptyState = document.getElementById('empty-state');
+    const questoesCount = document.getElementById('questoes-count');
+    const salvarBtn = document.getElementById('salvar-simulado');
+
+    // Configuração do Sortable
+    new Sortable(questoesSelecionadas, {
+        animation: 150,
+        handle: '.drag-handle',
+        onEnd: atualizarNumeracao
+    });
+
+    // Função para atualizar a numeração das questões
+    function atualizarNumeracao() {
+        questoesSelecionadas.querySelectorAll('.questao-item').forEach((item, index) => {
+            const badge = item.querySelector('.badge.bg-secondary');
+            if (badge) {
+                badge.textContent = index + 1;
+            }
+        });
+    }
+
+    // Função para atualizar o contador de questões
+    function atualizarContador() {
+        const count = questoesSelecionadas.children.length;
+        questoesCount.textContent = count;
+        
+        if (count === 0) {
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+        }
+    }
+
+    // Adicionar questão
+    document.querySelectorAll('.adicionar-questao').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const questao = this.closest('.questao-disponivel');
+            const questaoId = questao.dataset.id;
+
+            // Verifica se a questão já foi adicionada
+            if (questoesSelecionadas.querySelector(`[data-id="${questaoId}"]`)) {
+                alert('Esta questão já foi adicionada ao simulado.');
+                return;
+            }
+
+            // Verifica o limite de questões
+            if (questoesSelecionadas.children.length >= 45) {
+                alert('O simulado não pode ter mais que 45 questões.');
+                return;
+            }
+
+            // Clona a questão mantendo a estrutura e conteúdo
+            const novaQuestao = questao.cloneNode(true);
+            novaQuestao.classList.remove('questao-disponivel');
+            
+            // Adiciona o número da questão
+            const badges = novaQuestao.querySelector('.questao-badges');
+            const numeroBadge = document.createElement('span');
+            numeroBadge.className = 'badge bg-secondary';
+            numeroBadge.textContent = questoesSelecionadas.children.length + 1;
+            badges.insertBefore(numeroBadge, badges.firstChild);
+            
+            // Adiciona o handle de arrastar
+            const handleDiv = document.createElement('div');
+            handleDiv.className = 'drag-handle me-2';
+            handleDiv.innerHTML = '<i class="bi bi-grip-vertical"></i>';
+            novaQuestao.querySelector('.d-flex').insertBefore(
+                handleDiv,
+                novaQuestao.querySelector('.questao-info')
+            );
+            
+            // Muda o botão de adicionar para remover
+            const btnAdicionar = novaQuestao.querySelector('.adicionar-questao');
+            btnAdicionar.className = 'btn btn-sm btn-outline-danger ms-2 remover-questao';
+            btnAdicionar.querySelector('i').className = 'bi bi-x-lg';
+            
+            questoesSelecionadas.appendChild(novaQuestao);
+            questao.style.display = 'none';
+            atualizarContador();
+        });
+    });
+
+    // Remover questão
+    questoesSelecionadas.addEventListener('click', function(e) {
+        if (e.target.closest('.remover-questao')) {
+            const questao = e.target.closest('.questao-item');
+            const questaoId = questao.dataset.id;
+            
+            // Mostra a questão novamente no banco de questões
+            const questaoDisponivel = document.querySelector(`.questao-disponivel[data-id="${questaoId}"]`);
+            if (questaoDisponivel) {
+                questaoDisponivel.style.display = '';
+            }
+            
+            questao.remove();
+            atualizarNumeracao();
+            atualizarContador();
+        }
+    });
+
+        // Busca de questões
+    buscaInput.addEventListener('input', function(e) {
+        const termo = e.target.value.toLowerCase();
+        document.querySelectorAll('.questao-disponivel').forEach(questao => {
+            const disciplina = questao.dataset.disciplina;
+            const conteudo = questao.dataset.conteudo;
+            const nivel = questao.dataset.nivel;
+            const texto = questao.textContent.toLowerCase();
+            
+            const mostrar = disciplina.includes(termo) || 
+                            conteudo.includes(termo) || 
+                            nivel.includes(termo) ||
+                            texto.includes(termo);
+
+            if (questoesSelecionadas.querySelector(`[data-id="${questao.dataset.id}"]`)) {
+                questao.style.display = 'none';
+            } else {
+                questao.style.display = mostrar ? '' : 'none';
+            }
+        });
+    });
+
+    // Salvar simulado
+    salvarBtn.addEventListener('click', function() {
+        const questoes = Array.from(questoesSelecionadas.children).map(item => item.dataset.id);
+        
+        if (questoes.length === 0) {
+            alert('Adicione pelo menos uma questão ao simulado antes de salvar.');
+            return;
+        }
+
+        fetch(`{% url 'questions:update_questoes_ordem' simulado.pk %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ questoes: questoes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Simulado salvo com sucesso!');
+                window.location.href = "{% url 'questions:simulado_list' %}";
+            } else {
+                alert('Erro ao salvar o simulado: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar o simulado');
+        });
+    });
+
+    // Inicialização
+    atualizarContador();
+});
+</script>
+{% endblock %}
+

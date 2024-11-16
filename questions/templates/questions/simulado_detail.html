@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card bg-dark text-white">
+        <div class="card-header">
+            <h2>{{ simulado.titulo }}</h2>
+        </div>
+        <div class="card-body">
+            {% if simulado.cabecalho %}
+            <div class="mb-4">
+                <h4>Cabeçalho</h4>
+                <div>{{ simulado.cabecalho|safe }}</div>
+            </div>
+            {% endif %}
+
+            {% if simulado.instrucoes %}
+            <div class="mb-4">
+                <h4>Instruções</h4>
+                <div>{{ simulado.instrucoes|safe }}</div>
+            </div>
+            {% endif %}
+
+            <div class="mb-4">
+                <h4>Questões</h4>
+                {% if simulado.questoes.all %}
+                    <ol>
+                    {% for questao in simulado.questoes.all %}
+                        <li class="mb-3">
+                            <div class="questao">
+                                <div class="enunciado mb-2">{{ questao.enunciado|safe }}</div>
+                                {% if questao.imagem %}
+                                    <img src="{{ questao.imagem.url }}" alt="Imagem da questão" class="img-fluid mb-2">
+                                {% endif %}
+                                <div class="alternativas">
+                                    {% if questao.alternativa_a %}
+                                    <p>a) {{ questao.alternativa_a|safe }}</p>
+                                    {% endif %}
+                                    {% if questao.alternativa_b %}
+                                    <p>b) {{ questao.alternativa_b|safe }}</p>
+                                    {% endif %}
+                                    {% if questao.alternativa_c %}
+                                    <p>c) {{ questao.alternativa_c|safe }}</p>
+                                    {% endif %}
+                                    {% if questao.alternativa_d %}
+                                    <p>d) {{ questao.alternativa_d|safe }}</p>
+                                    {% endif %}
+                                    {% if questao.alternativa_e %}
+                                    <p>e) {{ questao.alternativa_e|safe }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                    </ol>
+                {% else %}
+                    <p>Nenhuma questão adicionada a este simulado.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="btn-group">
+                <a href="{% url 'questions:simulado_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                </a>
+                <a href="{% url 'questions:simulado_list' %}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+body {
+    background-color: #212529;
+}
+.questao {
+    margin-bottom: 2rem;
+}
+.enunciado {
+    font-weight: 500;
+}
+.alternativas p {
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+}
+</style>
+{% endblock %}

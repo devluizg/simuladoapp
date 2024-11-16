@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Banco de Questões - SimuladoApp{% endblock %}
+
+{% block extra_head %}
+<style>
+    .questao-preview {
+        max-height: 1.5em;
+        overflow: hidden;
+        display: -webkit-box;
+        display: box;
+        -webkit-line-clamp: 1;
+        line-clamp: 1;
+        -webkit-box-orient: vertical;
+        box-orient: vertical;
+        font-size: 0.9em;
+        color: #adb5bd;
+        margin-top: 0.25rem;
+    }
+
+    .questao-item {
+        transition: all 0.3s ease;
+    }
+
+    .questao-item:hover {
+        transform: translateX(5px);
+        border-color: rgba(255, 255, 255, 0.5) !important;
+    }
+
+    .questao-info {
+        flex-grow: 1;
+        min-width: 0;  /* Permite que o texto seja truncado */
+    }
+
+    .questao-badges {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .nivel-badge {
+        font-size: 0.75em;
+    }
+
+    .nivel-facil { background-color: #198754 !important; }
+    .nivel-medio { background-color: #ffc107 !important; color: #000 !important; }
+    .nivel-dificil { background-color: #dc3545 !important; }
+
+    .actions-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Banco de Questões</h1>
+
+    <!-- Formulário de Filtro -->
+    <div class="card bg-dark text-light mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    {{ form.disciplina }}
+                </div>
+                <div class="col-md-4">
+                    {{ form.conteudo }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.nivel_dificuldade }}
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Questões -->
+    <div class="list-group">
+        {% for questao in questoes %}
+            <div class="list-group-item bg-dark text-light questao-item mb-3 border border-secondary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="questao-info">
+                        <div class="questao-badges">
+                            <span class="badge bg-primary">{{ questao.disciplina }}</span>
+                            <span class="badge bg-info">{{ questao.conteudo }}</span>
+                            <span class="badge nivel-badge 
+                                {% if questao.nivel_dificuldade == 'F' %}nivel-facil
+                                {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
+                                {% else %}nivel-dificil{% endif %}">
+                                {{ questao.get_nivel_dificuldade_display }}
+                            </span>
+                        </div>
+                        <div class="questao-preview" title="{{ questao.enunciado_preview|escape }}" data-bs-toggle="tooltip" data-bs-placement="top">
+                            {{ questao.enunciado_preview|safe|truncatechars_html:100 }}
+                        </div>                        
+                    </div>
+                    <div class="actions-wrapper">
+                        <a href="{% url 'questions:questao_update' questao.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{% url 'questions:questao_delete' questao.pk %}" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="alert alert-info">Nenhuma questão encontrada.</div>
+        {% endfor %}
+    </div>
+
+    <!-- Paginação -->
+    {% if questoes.has_other_pages %}
+        <nav aria-label="Paginação das questões" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if questoes.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ questoes.previous_page_number }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Anterior</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Anterior</span>
+                    </li>
+                {% endif %}
+
+                {% for i in questoes.paginator.page_range %}
+                    {% if questoes.number == i %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ i }} <span class="sr-only">(atual)</span></span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ i }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">{{ i }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if questoes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ questoes.next_page_number }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Próxima</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">Próxima</span>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa os tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+
+    // Adiciona classes do Bootstrap aos campos do formulário
+    const formFields = [
+        '{{ form.disciplina.id_for_label }}',
+        '{{ form.conteudo.id_for_label }}',
+        '{{ form.nivel_dificuldade.id_for_label }}'
+    ];
+
+    formFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (field) {
+            field.classList.add('form-control', 'bg-dark', 'text-light');
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: a4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+
+        /* Cabeçalho e Instruções */
+        .header-section {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+        }
+
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 12px;
+        }
+
+        .instrucoes {
+            text-align: justify;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #000;
+            background-color: #f9f9f9;
+        }
+
+        /* Conteúdo das Questões */
+        .content-wrapper {
+            column-count: 2;
+            column-gap: 20px;
+            column-rule: 1px dashed #000;
+            margin-bottom: 20px;
+        }
+        
+        .questao {
+            break-inside: avoid;
+            margin-bottom: 15px;
+        }
+        
+        .questao-numero {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .enunciado {
+            margin-bottom: 8px;
+            text-align: justify;
+        }
+        
+        .alternativas {
+            margin-left: 15px;
+        }
+        
+        .alternativa {
+            margin-bottom: 4px;
+            text-align: justify;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 8px auto;
+        }
+
+        /* Cartão Resposta */
+        .cartao-resposta {
+            page-break-before: always;
+            padding: 20px;
+            border: 2px solid #000;
+        }
+
+        .cartao-titulo {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
+
+        .cartao-grid {
+            display: table;
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 5px;
+        }
+
+        .questao-linha {
+            display: table-row;
+            height: 30px;
+        }
+
+        .numero-questao {
+            display: table-cell;
+            width: 40px;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+
+        .opcoes {
+            display: table-cell;
+            vertical-align: middle;
+            padding-left: 10px;
+        }
+
+        .opcao {
+            display: inline-block;
+            width: 25px;
+            height: 25px;
+            border: 2px solid #000;
+            border-radius: 50%;
+            margin: 0 10px;
+            text-align: center;
+            line-height: 25px;
+            font-weight: bold;
+        }
+
+        .identificacao {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #000;
+        }
+
+        .identificacao p {
+            margin: 5px 0;
+        }
+
+        .linha {
+            border-bottom: 1px solid #000;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho e Instruções -->
+    <div class="header-section">
+        {% if simulado.cabecalho %}
+        <div class="cabecalho">
+            {{ simulado.cabecalho|safe }}
+        </div>
+        {% endif %}
+
+        {% if simulado.instrucoes %}
+        <div class="instrucoes">
+            <strong>INSTRUÇÕES:</strong><br>
+            {{ simulado.instrucoes|safe }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Questões -->
+    <div class="content-wrapper">
+        {% for questao in questoes %}
+        <div class="questao">
+            <div class="questao-numero">
+                QUESTÃO {{ forloop.counter|stringformat:"02d" }}
+            </div>
+            <div class="enunciado">
+                {{ questao.enunciado|safe }}
+            </div>
+            <div class="alternativas">
+                <div class="alternativa">A) {{ questao.alternativa_a|safe }}</div>
+                <div class="alternativa">B) {{ questao.alternativa_b|safe }}</div>
+                <div class="alternativa">C) {{ questao.alternativa_c|safe }}</div>
+                <div class="alternativa">D) {{ questao.alternativa_d|safe }}</div>
+                <div class="alternativa">E) {{ questao.alternativa_e|safe }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Cartão Resposta -->
+    <div class="cartao-resposta">
+        <div class="cartao-titulo">CARTÃO RESPOSTA</div>
+        
+        <div class="identificacao">
+            <p>Nome: ________________________________________________</p>
+            <p>Data: ____/____/______</p>
+            <p>Assinatura: _________________________________________</p>
+        </div>
+
+        <div class="cartao-grid">
+            {% for questao in questoes %}
+            <div class="questao-linha">
+                <div class="numero-questao">{{ forloop.counter|stringformat:"02d" }}</div>
+                <div class="opcoes">
+                    <span class="opcao">A</span>
+                    <span class="opcao">B</span>
+                    <span class="opcao">C</span>
+                    <span class="opcao">D</span>
+                    <span class="opcao">E</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
