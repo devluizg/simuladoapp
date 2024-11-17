@@ -9,50 +9,55 @@
         </a>
     </div>
 
-    {% if simulados %}
-    <div class="row">
-        {% for simulado in simulados %}
-        <div class="col-md-6 mb-4">
-            <div class="card bg-dark text-white">
-                <div class="card-body">
-                    <h5 class="card-title">{{ simulado.titulo }}</h5>
-                    <div class="card-text">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-question-circle me-2"></i>
-                            <span>{{ simulado.questoes.count }} questões</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-calendar me-2"></i>
-                            <span>Criado em {{ simulado.data_criacao|date:"d/m/Y" }}</span>
+    <div id="simulados-container">
+        {% if simulados %}
+        <div class="row">
+            {% for simulado in simulados %}
+            <div class="col-md-6 mb-4">
+                <div class="card bg-dark text-white" data-simulado-id="{{ simulado.id }}">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ simulado.titulo }}</h5>
+                        <div class="card-text">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-question-circle me-2"></i>
+                                <span>{{ simulado.questoes.count }} questões</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-calendar me-2"></i>
+                                <span>Criado em {{ simulado.data_criacao|date:"d/m/Y" }}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="card-footer">
-                    <div class="btn-group">
-                        <a href="{% url 'questions:simulado_detail' simulado.id %}" class="btn btn-outline-light btn-sm">
-                            <i class="bi bi-eye"></i> Ver
-                        </a>
-                        <a href="{% url 'questions:simulado_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
-                            <i class="bi bi-pencil"></i> Editar
-                        </a>
-                        <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-outline-light btn-sm">
-                            <i class="bi bi-file-pdf"></i> PDF
-                        </a>
-                        <button type="button" class="btn btn-outline-danger btn-sm" 
-                                onclick="confirmarExclusao('{{ simulado.id }}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
+                    <div class="card-footer">
+                        <div class="btn-group">
+                            <a href="{% url 'questions:simulado_detail' simulado.id %}" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                            <a href="{% url 'questions:simulado_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-pencil"></i> Editar
+                            </a>
+                            <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-file-pdf"></i> PDF
+                            </a>
+                            <a href="{% url 'questions:simulado_delete' simulado.id %}" 
+                               class="btn btn-outline-danger btn-sm delete-simulado" 
+                               data-simulado-id="{{ simulado.id }}"
+                               title="Excluir simulado">
+                                <i class="bi bi-trash"></i>
+                                <span class="visually-hidden">Excluir</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% else %}
+        <div class="alert alert-info">
+            Nenhum simulado cadastrado ainda. Clique em "Novo Simulado" para criar um.
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="alert alert-info">
-        Nenhum simulado cadastrado ainda. Clique em "Novo Simulado" para criar um.
-    </div>
-    {% endif %}
 </div>
 
 <!-- Modal de Confirmação de Exclusão -->
@@ -68,24 +73,80 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <form id="formExclusao" method="post" action="">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Excluir</button>
-                </form>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Excluir</button>
             </div>
         </div>
     </div>
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteLinks = document.querySelectorAll('.delete-simulado');
+    
+    deleteLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja excluir este simulado?')) {
+                const simuladoId = this.getAttribute('data-simulado-id');
+                
+                fetch(this.href, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove o card do simulado
+                        const card = document.querySelector(`.card[data-simulado-id="${simuladoId}"]`);
+                        if (card) {
+                            card.closest('.col-md-6').remove();
+                        }
+                        
+                        // Se não houver mais simulados, atualiza a mensagem
+                        if (document.querySelectorAll('.card[data-simulado-id]').length === 0) {
+                            const simuladosContainer = document.getElementById('simulados-container');
+                            simuladosContainer.innerHTML = `
+                                <div class="alert alert-info">
+                                    Nenhum simulado cadastrado ainda. Clique em "Novo Simulado" para criar um.
+                                </div>
+                            `;
+                        }
+                    } else {
+                        alert('Erro ao excluir o simulado: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro:', error);
+                    alert('Erro ao excluir o simulado');
+                });
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-function confirmarExclusao(simuladoId) {
-    const modal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
-    const form = document.getElementById('formExclusao');
-    form.action = `/simulados/${simuladoId}/excluir/`;
-    modal.show();
-}
+    alert('Script carregado!'); // Teste inicial
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Script inicializado');
+        
+        const deleteLinks = document.querySelectorAll('.delete-simulado');
+        
+        deleteLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (confirm('Tem certeza que deseja excluir este simulado?')) {
+                    window.location.href = this.href;
+                }
+            });
+        });
+    });
 </script>
 {% endblock %}

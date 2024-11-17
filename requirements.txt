@@ -15,3 +15,4 @@ weasyprint
 reportlab
 beautifulsoup4 
 xhtml2pdf
+PyPDF2

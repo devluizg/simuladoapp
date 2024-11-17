@@ -99,12 +99,26 @@ class QuestaoSimulado(models.Model):
 
     class Meta:
         ordering = ['ordem']
-        unique_together = ['simulado', 'ordem', 'questao']  
+        unique_together = [
+            ['simulado', 'questao'],  # Evita duplicatas de questões no mesmo simulado
+            ['simulado', 'ordem']     # Garante que cada ordem seja única dentro do simulado
+        ]
+
+    def save(self, *args, **kwargs):
+        # Se a ordem não foi definida, atribui a próxima ordem disponível
+        if not self.ordem:
+            max_ordem = QuestaoSimulado.objects.filter(simulado=self.simulado).aggregate(models.Max('ordem'))['ordem__max'] or 0
+            self.ordem = max_ordem + 1
+        super().save(*args, **kwargs)
 
     def clean(self):
         # Verifica se a questão já existe no simulado
-        if QuestaoSimulado.objects.filter(
-            simulado=self.simulado,
-            questao=self.questao
-        ).exists():
+        if QuestaoSimulado.objects.filter(simulado=self.simulado, questao=self.questao).exclude(pk=self.pk).exists():
             raise ValidationError('Esta questão já foi adicionada ao simulado.')
+
+        # Verifica se a ordem já está em uso no simulado
+        if QuestaoSimulado.objects.filter(simulado=self.simulado, ordem=self.ordem).exclude(pk=self.pk).exists():
+            raise ValidationError('Esta ordem já está em uso neste simulado.')
+
+    def __str__(self):
+        return f"Questão {self.questao.id} no Simulado {self.simulado.id} (Ordem: {self.ordem})"

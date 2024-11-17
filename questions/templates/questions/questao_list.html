@@ -53,6 +53,11 @@
         align-items: center;
         gap: 0.5rem;
     }
+
+    .btn-add-to-simulado {
+        background-color: #28a745;
+        color: white;
+    }
 </style>
 {% endblock %}
 
@@ -103,6 +108,9 @@
                         </div>                        
                     </div>
                     <div class="actions-wrapper">
+                        <button class="btn btn-sm btn-add-to-simulado" data-bs-toggle="modal" data-bs-target="#addToSimuladoModal" data-questao-id="{{ questao.pk }}">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
                         <a href="{% url 'questions:questao_update' questao.pk %}" class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-pencil"></i>
                         </a>
@@ -156,11 +164,93 @@
         </nav>
     {% endif %}
 </div>
+
+<!-- Modal para adicionar questão ao simulado -->
+<div class="modal fade" id="addToSimuladoModal" tabindex="-1" aria-labelledby="addToSimuladoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addToSimuladoModalLabel">Adicionar Questão ao Simulado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addToSimuladoForm">
+                    <input type="hidden" id="questaoId" name="questaoId">
+                    <div class="mb-3">
+                        <label for="simuladoSelect" class="form-label">Selecione o Simulado:</label>
+                        <select class="form-select bg-dark text-light" id="simuladoSelect" name="simuladoId" required>
+                            <option value="">Escolha um simulado...</option>
+                            {% for simulado in simulados %}
+                                <option value="{{ simulado.id }}">{{ simulado.titulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="addToSimuladoBtn">Adicionar</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var addToSimuladoModal = document.getElementById('addToSimuladoModal')
+    addToSimuladoModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget
+        var questaoId = button.getAttribute('data-questao-id')
+        var modalQuestaoIdInput = addToSimuladoModal.querySelector('#questaoId')
+        modalQuestaoIdInput.value = questaoId
+    })
+
+    document.getElementById('addToSimuladoBtn').addEventListener('click', function() {
+        var form = document.getElementById('addToSimuladoForm');
+        var questaoId = form.questaoId.value;
+        var simuladoId = form.simuladoId.value;
+
+        if (!simuladoId) {
+            alert('Por favor, selecione um simulado.');
+            return;
+        }
+
+        fetch('{% url "questions:adicionar_questao_simulado" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                questao_id: questaoId,
+                simulado_id: simuladoId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Erro na resposta do servidor');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('Questão adicionada com sucesso ao simulado!');
+                var modal = bootstrap.Modal.getInstance(addToSimuladoModal);
+                modal.hide();
+            } else {
+                throw new Error(data.error || 'Erro desconhecido');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao adicionar a questão: ' + error.message);
+        });
+    });
+
     // Inicializa os tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {

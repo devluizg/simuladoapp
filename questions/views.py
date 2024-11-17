@@ -11,7 +11,11 @@ from django.utils.html import strip_tags
 from django.utils.encoding import force_str
 from .models import Questao, Simulado, QuestaoSimulado
 from .forms import QuestaoForm, SimuladoForm, QuestaoFilterForm
+from django.db.models import Max
+from django.db import transaction
+from django.db import models
 import json
+from django.views.decorators.csrf import csrf_exempt
 from weasyprint import HTML
 import tempfile
 from django.conf import settings
@@ -56,9 +60,13 @@ def questao_list(request):
     page = request.GET.get('page')
     questoes_paginadas = paginator.get_page(page)
 
+    # Obter simulados do usuário atual
+    simulados = Simulado.objects.filter(professor=request.user).order_by('-data_criacao')
+
     return render(request, 'questions/questao_list.html', {
         'questoes': questoes_paginadas,
-        'form': form
+        'form': form,
+        'simulados': simulados  # Adicionando simulados ao contexto
     })
 
 @login_required
@@ -87,6 +95,46 @@ def questao_create(request):
     
     return render(request, 'questions/questao_form.html', {'form': form})
 
+@login_required
+@require_POST
+@csrf_exempt
+def adicionar_questao_simulado(request):
+    try:
+        data = json.loads(request.body)
+        questao_id = data.get('questao_id')
+        simulado_id = data.get('simulado_id')
+
+        if not questao_id or not simulado_id:
+            return JsonResponse({'success': False, 'error': 'IDs de questão e simulado são necessários.'}, status=400)
+
+        questao = Questao.objects.get(id=questao_id, professor=request.user)
+        simulado = Simulado.objects.get(id=simulado_id, professor=request.user)
+
+        # Verifica se a questão já está no simulado
+        if QuestaoSimulado.objects.filter(simulado=simulado, questao=questao).exists():
+            return JsonResponse({'success': False, 'error': 'Esta questão já está no simulado.'})
+
+        with transaction.atomic():
+            # Encontra a próxima ordem disponível
+            max_ordem = QuestaoSimulado.objects.filter(simulado=simulado).aggregate(Max('ordem'))['ordem__max'] or 0
+            proxima_ordem = max_ordem + 1
+
+            # Cria a nova relação QuestaoSimulado
+            QuestaoSimulado.objects.create(
+                simulado=simulado,
+                questao=questao,
+                ordem=proxima_ordem
+            )
+
+        return JsonResponse({'success': True})
+
+    except Questao.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Questão não encontrada.'}, status=404)
+    except Simulado.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Simulado não encontrado.'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
 @login_required
 def questao_update(request, pk):
     """View para atualizar uma questão existente."""
@@ -186,18 +234,23 @@ def simulado_edit(request, pk):
     return render(request, 'questions/simulado_edit.html', context)
 
 @login_required
+@require_POST
 def simulado_delete(request, pk):
     """View para excluir um simulado."""
-    simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
-    
-    if request.method == 'POST':
+    try:
+        simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
         simulado.delete()
-        messages.success(request, 'Simulado excluído com sucesso!')
-        return redirect('questions:simulado_list')
-    
-    return render(request, 'questions/simulado_confirm_delete.html', {
-        'simulado': simulado
-    })
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Simulado excluído com sucesso!'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @login_required
 def simulado_detail(request, pk):
