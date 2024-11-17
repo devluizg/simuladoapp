@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     {% load static %}
+    {% load custom_filters %}
     <style>
         @font-face {
             font-family: '123Testing';
@@ -180,70 +181,92 @@
             border-bottom: 1px solid #000;
             margin: 5px 0;
         }
+
+        /* Novo estilo para forçar quebra de página entre simulados */
+        .simulado-wrapper {
+            page-break-after: always;
+        }
+
+        /* Novo estilo para o título do simulado */
+        .simulado-titulo {
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+        }
     </style>
 </head>
 <body>
-    <!-- Cabeçalho e Instruções -->
-    <div class="header-section">
-        {% if simulado.cabecalho %}
-        <div class="cabecalho">
-            {{ simulado.cabecalho|safe }}
-        </div>
-        {% endif %}
+    {% for i in "12345" %}
+    <div class="simulado-wrapper">
+        <!-- Título do Simulado -->
+        <div class="simulado-titulo">SIMULADO - VERSÃO {{ forloop.counter }}</div>
 
-        {% if simulado.instrucoes %}
-        <div class="instrucoes">
-            <strong>INSTRUÇÕES:</strong><br>
-            {{ simulado.instrucoes|safe }}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Questões -->
-    <div class="content-wrapper">
-        {% for questao in questoes %}
-        <div class="questao">
-            <div class="questao-numero">
-                QUESTÃO {{ forloop.counter|stringformat:"02d" }}
+        <!-- Cabeçalho e Instruções -->
+        <div class="header-section">
+            {% if simulado.cabecalho %}
+            <div class="cabecalho">
+                {{ simulado.cabecalho|safe }}
             </div>
-            <div class="enunciado">
-                {{ questao.enunciado|safe }}
-            </div>
-            <div class="alternativas">
-                <div class="alternativa"><span class="item">A</span><span class="conteudo">{{ questao.alternativa_a|safe }}</span></div>
-                <div class="alternativa"><span class="item">B</span><span class="conteudo">{{ questao.alternativa_b|safe }}</span></div>
-                <div class="alternativa"><span class="item">C</span><span class="conteudo">{{ questao.alternativa_c|safe }}</span></div>
-                <div class="alternativa"><span class="item">D</span><span class="conteudo">{{ questao.alternativa_d|safe }}</span></div>
-                <div class="alternativa"><span class="item">E</span><span class="conteudo">{{ questao.alternativa_e|safe }}</span></div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
+            {% endif %}
 
-    <!-- Cartão Resposta -->
-    <div class="cartao-resposta">
-        <div class="cartao-titulo">CARTÃO RESPOSTA</div>
-        
-        <div class="identificacao">
-            <p>Nome: ________________________________________________</p>
-            <p>Data: ____/____/______</p>
-            <p>Assinatura: _________________________________________</p>
+            {% if simulado.instrucoes %}
+            <div class="instrucoes">
+                <strong>INSTRUÇÕES:</strong><br>
+                {{ simulado.instrucoes|safe }}
+            </div>
+            {% endif %}
         </div>
 
-        <div class="cartao-grid">
-            {% for questao in questoes %}
-            <div class="questao-linha">
-                <div class="numero-questao">{{ forloop.counter|stringformat:"02d" }}</div>
-                <div class="opcoes">
-                    <span class="opcao">A</span>
-                    <span class="opcao">B</span>
-                    <span class="opcao">C</span>
-                    <span class="opcao">D</span>
-                    <span class="opcao">E</span>
+        <!-- Questões -->
+        <div class="content-wrapper">
+            {% for questao in questoes|shuffle %}
+            <div class="questao">
+                <div class="questao-numero">
+                    QUESTÃO {{ forloop.counter|stringformat:"02d" }}
+                </div>
+                <div class="enunciado">
+                    {{ questao.enunciado|safe }}
+                </div>
+                <div class="alternativas">
+                    <div class="alternativa"><span class="item">A</span><span class="conteudo">{{ questao.alternativa_a|safe }}</span></div>
+                    <div class="alternativa"><span class="item">B</span><span class="conteudo">{{ questao.alternativa_b|safe }}</span></div>
+                    <div class="alternativa"><span class="item">C</span><span class="conteudo">{{ questao.alternativa_c|safe }}</span></div>
+                    <div class="alternativa"><span class="item">D</span><span class="conteudo">{{ questao.alternativa_d|safe }}</span></div>
+                    <div class="alternativa"><span class="item">E</span><span class="conteudo">{{ questao.alternativa_e|safe }}</span></div>
                 </div>
             </div>
             {% endfor %}
         </div>
+
+        <!-- Cartão Resposta -->
+        <div class="cartao-resposta">
+            <div class="cartao-titulo">CARTÃO RESPOSTA - VERSÃO {{ forloop.counter }}</div>
+            
+            <div class="identificacao">
+                <p>Nome: ________________________________________________</p>
+                <p>Data: ____/____/______</p>
+                <p>Assinatura: _________________________________________</p>
+            </div>
+
+            <div class="cartao-grid">
+                {% for questao in questoes|shuffle %}
+                <div class="questao-linha">
+                    <div class="numero-questao">{{ forloop.counter|stringformat:"02d" }}</div>
+                    <div class="opcoes">
+                        <span class="opcao">A</span>
+                        <span class="opcao">B</span>
+                        <span class="opcao">C</span>
+                        <span class="opcao">D</span>
+                        <span class="opcao">E</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
     </div>
+    {% endfor %}
 </body>
 </html>

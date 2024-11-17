@@ -14,6 +14,7 @@ from .forms import QuestaoForm, SimuladoForm, QuestaoFilterForm
 from django.db.models import Max
 from django.db import transaction
 from django.db import models
+from .templatetags import custom_filters
 import json
 from django.views.decorators.csrf import csrf_exempt
 from weasyprint import HTML
@@ -323,9 +324,9 @@ def update_questoes_ordem(request, pk):
 
 @login_required
 def gerar_pdf(request, pk):
-    """View para gerar o PDF do simulado."""
+    """View para gerar o PDF do simulado com 5 versões."""
     simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
-    questoes = simulado.questoes.all().order_by('questaosimulado__ordem')
+    questoes = list(simulado.questoes.all().order_by('questaosimulado__ordem'))
     
     html_string = render_to_string('questions/simulado_pdf.html', {
         'simulado': simulado,
@@ -337,9 +338,10 @@ def gerar_pdf(request, pk):
         HTML(string=html_string).write_pdf(output)
         output.seek(0)
         response = HttpResponse(output.read(), content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="simulado_{simulado.pk}.pdf"'
+        response['Content-Disposition'] = f'attachment; filename="simulado_{simulado.pk}_5versoes.pdf"'
         
     return response
+
 
 @login_required
 def gerar_pdf_todos(request):
