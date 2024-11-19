@@ -23,11 +23,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'questions',
+    'classes',
     'ckeditor',
     'ckeditor_uploader',
     'rest_framework',  # Para API
     'corsheaders',    # Para CORS
     'django_filters',
+    'widget_tweaks',
 ]
 
 # Configurações de Middleware

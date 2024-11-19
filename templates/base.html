@@ -176,6 +176,14 @@
                                 <i class="bi bi-question-circle"></i> Questões
                             </a>
                         </li>
+
+                        <!-- Novo Botão Turmas -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'class_list' in request.resolver_match.view_name %}active{% endif %}" 
+                            href="{% url 'class_list' %}">
+                                <i class="bi bi-people"></i> Turmas
+                            </a>
+                        </li>
                     </ul>
 
                     <!-- Menu do usuário -->
