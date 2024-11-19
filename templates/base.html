@@ -161,51 +161,20 @@
                 {% if user.is_authenticated %}
                     <!-- Menu principal -->
                     <ul class="navbar-nav me-auto">
+                        <!-- Botão Simulados -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.resolver_match.view_name == 'questions:questions_dashboard' %}active{% endif %}" 
-                            href="{% url 'questions:questions_dashboard' %}">
-                                <i class="bi bi-house-door"></i> Início
-                            </a>
-                        </li>
-                        
-                        <!-- Dropdown Simulados -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" 
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <a class="nav-link {% if 'simulado_list' in request.resolver_match.view_name %}active{% endif %}" 
+                            href="{% url 'questions:simulado_list' %}">
                                 <i class="bi bi-file-text"></i> Simulados
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-dark">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'questions:simulado_list' %}">
-                                        <i class="bi bi-list"></i> Listar Todos
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'questions:simulado_create' %}">
-                                        <i class="bi bi-plus-circle"></i> Novo Simulado
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
                         
-                        <!-- Dropdown Questões -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" 
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <!-- Botão Questões -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'questao_list' in request.resolver_match.view_name %}active{% endif %}" 
+                            href="{% url 'questions:questao_list' %}">
                                 <i class="bi bi-question-circle"></i> Questões
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-dark">
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'questions:questao_list' %}">
-                                        <i class="bi bi-list"></i> Banco de Questões
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="{% url 'questions:questao_create' %}">
-                                        <i class="bi bi-plus-circle"></i> Nova Questão
-                                    </a>
-                                </li>
-                            </ul>
                         </li>
                     </ul>
 

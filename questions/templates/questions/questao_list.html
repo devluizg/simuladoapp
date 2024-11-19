@@ -58,12 +58,46 @@
         background-color: #28a745;
         color: white;
     }
+
+    .btn-nova-questao {
+        margin-bottom: 1rem;
+    }
+
+    /* Novo estilo para os placeholders */
+    #id_disciplina::placeholder,
+    #id_conteudo::placeholder,
+    #id_nivel_dificuldade::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+    }
+
+    /* Estilo para o texto digitado */
+    #id_disciplina,
+    #id_conteudo,
+    #id_nivel_dificuldade {
+        color: white;
+    }
+
+    /* Estilo para quando o input está focado */
+    #id_disciplina:focus,
+    #id_conteudo:focus,
+    #id_nivel_dificuldade:focus {
+        background-color: rgba(255, 255, 255, 0.1);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+    }
 </style>
+
 {% endblock %}
 
 {% block content %}
 <div class="container">
     <h1 class="mb-4">Banco de Questões</h1>
+
+    <!-- Botão para cadastrar nova questão -->
+    <a href="{% url 'questions:questao_create' %}" class="btn btn-success btn-nova-questao">
+        <i class="bi bi-plus-circle"></i> Cadastrar Nova Questão
+    </a>
 
     <!-- Formulário de Filtro -->
     <div class="card bg-dark text-light mb-4">
