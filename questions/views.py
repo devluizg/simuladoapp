@@ -21,6 +21,9 @@ from weasyprint import HTML
 import tempfile
 from django.conf import settings
 import os
+import logging
+from django.shortcuts import render
+import traceback
 
 @login_required
 def dashboard(request):
@@ -264,63 +267,81 @@ def simulado_detail(request, pk):
         'questoes': questoes
     })
 
+logger = logging.getLogger(__name__)
+
 @login_required
 @require_POST
 def update_questoes_ordem(request, pk):
-    """View para atualizar a ordem das questões no simulado via AJAX."""
-    simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
+    logger.info(f"Atualizando ordem do simulado {pk} para usuário {request.user.username}")
     try:
+        simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
         data = json.loads(request.body)
         questoes = data.get('questoes', [])
 
+        # Remover valores None e converter para inteiros
+        questoes = [int(q) for q in questoes if q is not None]
+        logger.debug(f"Questões recebidas após limpeza: {questoes}")
+
         if not questoes:
+            logger.warning("Tentativa de salvar simulado sem questões")
             return JsonResponse({
                 'status': 'error',
                 'message': 'O simulado deve ter pelo menos uma questão'
             }, status=400)
 
         if len(questoes) > 45:
+            logger.warning(f"Tentativa de salvar simulado com {len(questoes)} questões (máximo: 45)")
             return JsonResponse({
                 'status': 'error',
                 'message': 'O simulado não pode ter mais que 45 questões'
             }, status=400)
 
         if len(questoes) != len(set(questoes)):
+            logger.warning("Detectadas questões duplicadas na lista")
             return JsonResponse({
                 'status': 'error',
                 'message': 'Existem questões duplicadas na lista'
             }, status=400)
 
-        questoes_validas = Questao.objects.filter(
+        questoes_validas = set(Questao.objects.filter(
             id__in=questoes,
             professor=request.user
-        ).count()
+        ).values_list('id', flat=True))
         
-        if questoes_validas != len(questoes):
+        questoes_invalidas = set(questoes) - questoes_validas
+        
+        if questoes_invalidas:
+            logger.warning(f"Questões inválidas detectadas: {questoes_invalidas}")
             return JsonResponse({
                 'status': 'error',
-                'message': 'Algumas questões selecionadas são inválidas'
+                'message': f'Algumas questões selecionadas são inválidas: {", ".join(map(str, questoes_invalidas))}'
             }, status=400)
 
-        QuestaoSimulado.objects.filter(simulado=simulado).delete()
+        with transaction.atomic():
+            logger.debug("Iniciando transação atômica para atualizar questões do simulado")
+            QuestaoSimulado.objects.filter(simulado=simulado).delete()
 
-        for ordem, questao_id in enumerate(questoes, 1):
-            QuestaoSimulado.objects.create(
-                simulado=simulado,
-                questao_id=questao_id,
-                ordem=ordem
-            )
+            for ordem, questao_id in enumerate(questoes, 1):
+                QuestaoSimulado.objects.create(
+                    simulado=simulado,
+                    questao_id=questao_id,
+                    ordem=ordem
+                )
 
         simulado.save()
+        logger.info(f"Simulado {pk} atualizado com sucesso")
         return JsonResponse({
             'status': 'success',
             'message': 'Simulado atualizado com sucesso!'
         })
     except Exception as e:
+        logger.error(f"Erro ao atualizar simulado {pk}: {str(e)}")
+        logger.error(traceback.format_exc())
         return JsonResponse({
             'status': 'error',
-            'message': f'Erro ao atualizar simulado: {str(e)}'
-        }, status=400)
+            'message': f'Erro ao atualizar simulado: {str(e)}',
+            'traceback': traceback.format_exc()
+        }, status=500)
 
 @login_required
 def gerar_pdf(request, pk):

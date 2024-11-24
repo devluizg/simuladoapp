@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 class Class(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nome")
@@ -15,12 +16,13 @@ class Class(models.Model):
         verbose_name_plural = "Turmas"
 
 class Student(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name="Usuário")
-    classes = models.ManyToManyField(Class, related_name='students', verbose_name="Turmas")
+    name = models.CharField(max_length=100)
+    email = models.EmailField(null=True, blank=True)
+    student_id = models.IntegerField()
+    classes = models.ManyToManyField('Class', related_name='students')
 
     def __str__(self):
-        return self.user.get_full_name() or self.user.username
+        return f"{self.student_id} - {self.name}"
 
     class Meta:
-        verbose_name = "Aluno"
-        verbose_name_plural = "Alunos"
+        pass

@@ -19,4 +19,6 @@ urlpatterns = [
     # Rotas para gerenciamento de alunos em turmas
     path('<int:pk>/add_students/', views.class_add_students, name='class_add_students'),
     path('<int:class_pk>/remove_student/<int:student_pk>/', views.class_remove_student, name='class_remove_student'),
+    path('import-students/', views.import_students, name='import_students'),
+    path('student/<int:pk>/edit/', views.student_edit, name='student_edit'),
 ]
