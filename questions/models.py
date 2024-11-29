@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from ckeditor.fields import RichTextField
 from django.core.exceptions import ValidationError
+from classes.models import Class  # Importe o modelo Class
 
 
 class Questao(models.Model):
@@ -77,6 +78,7 @@ class Simulado(models.Model):
     ultima_modificacao = models.DateTimeField(auto_now=True)
     cabecalho = RichTextField(blank=True, null=True)
     instrucoes = RichTextField(blank=True, null=True)
+    classes = models.ManyToManyField(Class, related_name='simulados', blank=True)  # Nova relação com as turmas
 
     class Meta:
         verbose_name = 'Simulado'

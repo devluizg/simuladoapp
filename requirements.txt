@@ -19,3 +19,5 @@ PyPDF2
 bcrypt==3.2.0
 pandas
 openpyxl
+django-widget-tweaks
+django-crispy-forms

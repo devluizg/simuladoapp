@@ -24,6 +24,7 @@ import os
 import logging
 from django.shortcuts import render
 import traceback
+from classes.models import Class
 
 @login_required
 def dashboard(request):
@@ -192,37 +193,42 @@ def simulado_list(request):
 
 @login_required
 def simulado_create(request):
-    """View para criar um novo simulado."""
     if request.method == 'POST':
         form = SimuladoForm(request.POST)
         if form.is_valid():
             simulado = form.save(commit=False)
             simulado.professor = request.user
             simulado.save()
+            
+            # Salvar as turmas selecionadas
+            turmas = form.cleaned_data['turmas']
+            simulado.classes.set(turmas)
+            
             messages.success(request, 'Simulado criado com sucesso!')
             return redirect('questions:simulado_edit', pk=simulado.pk)
     else:
         form = SimuladoForm()
     
-    return render(request, 'questions/simulado_form.html', {'form': form})
+    context = {
+        'form': form,
+        'titulo': 'Novo Simulado'
+    }
+    return render(request, 'questions/simulado_form.html', context)
+
 
 @login_required
 def simulado_edit(request, pk):
-    """View para editar um simulado existente."""
     simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
     
-    questoes_selecionadas = simulado.questoes.all().order_by('questaosimulado__ordem')
-    
-    questoes_disponiveis = Questao.objects.filter(
-        professor=request.user
-    ).exclude(
-        id__in=questoes_selecionadas.values_list('id', flat=True)
-    ).order_by('disciplina', 'conteudo')
-
     if request.method == 'POST':
         form = SimuladoForm(request.POST, instance=simulado)
         if form.is_valid():
             form.save()
+            
+            # Atualizar as turmas selecionadas
+            turmas = form.cleaned_data['turmas']
+            simulado.classes.set(turmas)
+            
             messages.success(request, 'Simulado atualizado com sucesso!')
             return redirect('questions:simulado_list')
     else:
@@ -231,11 +237,11 @@ def simulado_edit(request, pk):
     context = {
         'form': form,
         'simulado': simulado,
-        'questoes_selecionadas': questoes_selecionadas,
-        'questoes_disponiveis': questoes_disponiveis
+        'titulo': 'Editar Simulado'
     }
     
-    return render(request, 'questions/simulado_edit.html', context)
+    return render(request, 'questions/simulado_form.html', context)
+
 
 @login_required
 @require_POST

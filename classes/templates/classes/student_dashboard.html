@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Dashboard de {{ student.name }}</h1>
+
+<h2>Informações do Aluno</h2>
+<p>ID: {{ student.student_id }}</p>
+<p>Email: {{ student.email }}</p>
+
+<h2>Turmas</h2>
+<ul>
+{% for class in classes %}
+    <li>{{ class.name }}</li>
+{% endfor %}
+</ul>
+
+<h2>Estatísticas</h2>
+<p>Total de Simulados: {{ total_simulados }}</p>
+<p>Total de Questões: {{ total_questoes }}</p>
+
+<h2>Últimos Simulados</h2>
+<ul>
+{% for simulado in simulados %}
+    <li>{{ simulado.titulo }} - {{ simulado.data_criacao|date:"d/m/Y" }}</li>
+{% endfor %}
+</ul>
+
+{% endblock %}

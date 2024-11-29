@@ -1,10 +1,7 @@
 from django import forms
 from .models import Questao, Simulado
 from ckeditor.widgets import CKEditorWidget
-
-from django import forms
-from .models import Questao, Simulado
-from ckeditor.widgets import CKEditorWidget
+from classes.models import Class
 
 class QuestaoForm(forms.ModelForm):
     class Meta:
@@ -33,9 +30,17 @@ class QuestaoForm(forms.ModelForm):
 
 
 class SimuladoForm(forms.ModelForm):
+    turmas = forms.ModelMultipleChoiceField(
+        queryset=Class.objects.all(),
+        widget=forms.CheckboxSelectMultiple(attrs={
+            'class': 'form-check-input bg-dark text-light'
+        }),
+        required=False
+    )
+
     class Meta:
         model = Simulado
-        fields = ['titulo', 'descricao', 'cabecalho', 'instrucoes']
+        fields = ['titulo', 'descricao', 'cabecalho', 'instrucoes', 'turmas']
         widgets = {
             'titulo': forms.TextInput(attrs={
                 'class': 'form-control bg-dark text-light',
@@ -55,6 +60,10 @@ class SimuladoForm(forms.ModelForm):
                 'rows': 4
             })
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['turmas'].label = "Selecione as Turmas"
 
     def clean(self):
         cleaned_data = super().clean()

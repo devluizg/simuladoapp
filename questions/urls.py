@@ -20,6 +20,7 @@ urlpatterns = [
     path('simulados/<int:pk>/editar/', views.simulado_edit, name='simulado_edit'),
     path('simulados/<int:pk>/excluir/', views.simulado_delete, name='simulado_delete'),
     path('simulados/<int:pk>/pdf/', views.gerar_pdf, name='gerar_pdf'),
+    path('simulado/<int:pk>/pdf/', views.gerar_pdf, name='simulado_pdf'),
     path('adicionar-questao-simulado/', views.adicionar_questao_simulado, name='adicionar_questao_simulado'),
     
     

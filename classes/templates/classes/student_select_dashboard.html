@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Selecionar Aluno para Dashboard{% endblock %}
+
+{% block content %}
+<div class="card bg-dark text-light">
+    <div class="card-header">
+        <h1>Selecionar Aluno para Dashboard</h1>
+    </div>
+    <div class="card-body">
+        <form method="get" class="mb-4">
+            <div class="mb-3">
+                <label for="class_id" class="form-label">Filtrar por Turma:</label>
+                <select name="class_id" id="class_id" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todas as Turmas</option>
+                    {% for class in classes %}
+                        <option value="{{ class.id }}" {% if selected_class == class.id|stringformat:"s" %}selected{% endif %}>
+                            {{ class.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="student_id" class="form-label">Selecione um Aluno:</label>
+                <select name="student_id" id="student_id" class="form-select">
+                    {% for student in students %}
+                        <option value="{{ student.student_id }}">{{ student.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Ver Dashboard</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

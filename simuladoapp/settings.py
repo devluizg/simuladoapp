@@ -170,7 +170,7 @@ PASSWORD_HASHERS = [
 
 SIMULADO_MAX_QUESTOES = 45
 ALLOWED_QUESTION_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif']
-MAX_QUESTION_IMAGE_SIZE = 5242880  # 5MB em bytes
+MAX_QUESTION_IMAGE_SIZE = 5242880  
 
 CACHES = {
     'default': {
@@ -204,10 +204,10 @@ CKEDITOR_CONFIGS = {
             ['RemoveFormat', 'Source'],
             ['MathType', 'ChemType'],
         ],
-        'autoGrow_onStartup': True,  # Ativa a expansão automática ao iniciar
-        'autoGrow_minHeight': 300,  # Altura mínima após expansão
-        'autoGrow_maxHeight': 500,  # Altura máxima após expansão
-        'autoGrow_bottomSpace': 10,  # Espaço adicional na parte inferior
+        'autoGrow_onStartup': True,  
+        'autoGrow_minHeight': 300,  
+        'autoGrow_maxHeight': 500,  
+        'autoGrow_bottomSpace': 10, 
         'width': '100%',
         'extraPlugins': ','.join([
             'uploadimage',
