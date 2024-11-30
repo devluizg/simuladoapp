@@ -22,7 +22,9 @@ urlpatterns = [
     path('simulados/<int:pk>/pdf/', views.gerar_pdf, name='gerar_pdf'),
     path('simulado/<int:pk>/pdf/', views.gerar_pdf, name='simulado_pdf'),
     path('adicionar-questao-simulado/', views.adicionar_questao_simulado, name='adicionar_questao_simulado'),
-    
+    path('simulado/form/', views.simulado_form, name='simulado_form'),
+    path('simulado/form/<int:pk>/', views.simulado_form, name='simulado_form_edit'),
+
     
     # AJAX
     path('simulados/<int:pk>/atualizar-ordem/', views.update_questoes_ordem, name='update_questoes_ordem'),

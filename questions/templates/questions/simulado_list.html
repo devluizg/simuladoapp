@@ -33,8 +33,11 @@
                             <a href="{% url 'questions:simulado_detail' simulado.id %}" class="btn btn-outline-light btn-sm">
                                 <i class="bi bi-eye"></i> Ver
                             </a>
+                            <a href="{% url 'questions:simulado_form_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
+                                <i class="bi bi-file-earmark-text"></i> Editar
+                            </a>
                             <a href="{% url 'questions:simulado_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
-                                <i class="bi bi-pencil"></i> Editar
+                                <i class="bi bi-pencil"></i> Questões
                             </a>
                             <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-outline-light btn-sm">
                                 <i class="bi bi-file-pdf"></i> PDF

@@ -303,190 +303,203 @@
 
 {% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const questoesSelecionadas = document.getElementById('questoes-selecionadas');
-    const questoesDisponiveis = document.getElementById('questoes-disponiveis');
-    const emptyState = document.getElementById('empty-state');
-    const questoesCount = document.getElementById('questoes-count');
-    const salvarBtn = document.getElementById('salvar-simulado');
-    const buscaInput = document.getElementById('busca-questoes');
-
-    // Mapa para armazenar todas as questões
-    const todasQuestoes = new Map();
-
-    // Função para inicializar o mapa de todas as questões
-    function inicializarTodasQuestoes() {
-        questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
-            todasQuestoes.set(questao.dataset.id, questao.cloneNode(true));
-        });
-        questoesSelecionadas.querySelectorAll('.questao-item').forEach(questao => {
-            if (!todasQuestoes.has(questao.dataset.id)) {
-                const novaQuestao = resetarQuestao(questao.cloneNode(true));
-                todasQuestoes.set(questao.dataset.id, novaQuestao);
-            }
-        });
-    }
-
-    // Função para resetar uma questão para o estado de "disponível"
-    function resetarQuestao(questao) {
-        questao.classList.remove('questao-item');
-        questao.classList.add('questao-disponivel');
-        
-        // Remove o número da questão
-        const numeroBadge = questao.querySelector('.badge.bg-secondary');
-        if (numeroBadge) numeroBadge.remove();
-
-        // Troca o botão de remover para adicionar
-        const btnContainer = questao.querySelector('.remover-questao');
-        if (btnContainer) {
-            btnContainer.className = 'btn btn-sm btn-success adicionar-questao ms-2';
-            btnContainer.innerHTML = '<i class="bi bi-plus-lg"></i>';
+    document.addEventListener('DOMContentLoaded', function() {
+        const questoesSelecionadas = document.getElementById('questoes-selecionadas');
+        const questoesDisponiveis = document.getElementById('questoes-disponiveis');
+        const emptyState = document.getElementById('empty-state');
+        const questoesCount = document.getElementById('questoes-count');
+        const salvarBtn = document.getElementById('salvar-simulado');
+        const buscaInput = document.getElementById('busca-questoes');
+    
+        // Mapa para armazenar todas as questões
+        const todasQuestoes = new Map();
+    
+        // Função para inicializar o mapa de todas as questões
+        function inicializarTodasQuestoes() {
+            questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
+                todasQuestoes.set(questao.dataset.id, questao.cloneNode(true));
+            });
+            questoesSelecionadas.querySelectorAll('.questao-item').forEach(questao => {
+                if (!todasQuestoes.has(questao.dataset.id)) {
+                    const novaQuestao = resetarQuestao(questao.cloneNode(true));
+                    todasQuestoes.set(questao.dataset.id, novaQuestao);
+                }
+            });
         }
-
-        return questao;
-    }
-
-    // Função para atualizar a visibilidade das questões no banco
-    function atualizarVisibilidadeBanco() {
-        const questoesSelecionadasIds = new Set(Array.from(questoesSelecionadas.children).map(q => q.dataset.id));
-        todasQuestoes.forEach((questao, id) => {
-            let questaoNoBanco = questoesDisponiveis.querySelector(`.questao-disponivel[data-id="${id}"]`);
-            if (questaoNoBanco) {
-                questaoNoBanco.style.display = questoesSelecionadasIds.has(id) ? 'none' : '';
-            } else if (!questoesSelecionadasIds.has(id)) {
-                questaoNoBanco = resetarQuestao(questao.cloneNode(true));
-                questoesDisponiveis.appendChild(questaoNoBanco);
+    
+        // Função para resetar uma questão para o estado de "disponível"
+        function resetarQuestao(questao) {
+            questao.classList.remove('questao-item');
+            questao.classList.add('questao-disponivel');
+            
+            // Remove o número da questão
+            const numeroBadge = questao.querySelector('.badge.bg-secondary');
+            if (numeroBadge) numeroBadge.remove();
+    
+            // Troca o botão de remover para adicionar
+            const btnContainer = questao.querySelector('.remover-questao');
+            if (btnContainer) {
+                btnContainer.className = 'btn btn-sm btn-success adicionar-questao ms-2';
+                btnContainer.innerHTML = '<i class="bi bi-plus-lg"></i>';
             }
-            // Adiciona evento de clique para o botão de adicionar
-            const btnAdicionar = questaoNoBanco.querySelector('.adicionar-questao');
-            if (btnAdicionar) {
-                btnAdicionar.addEventListener('click', adicionarQuestaoAoSimulado);
-            }
-        });
-    }
-
-    // Função para adicionar questão ao simulado
-    function adicionarQuestaoAoSimulado(e) {
-        e.preventDefault();
-        const questao = this.closest('.questao-disponivel');
-        const questaoClone = questao.cloneNode(true);
-        adicionarAoSimulado(questaoClone);
-        questoesSelecionadas.appendChild(questaoClone);
-        questao.style.display = 'none';
-        atualizarNumeracao();
-        atualizarContador();
-    }
-
-    // Adicionar questão (para questões já no banco)
-    document.querySelectorAll('.adicionar-questao').forEach(btn => {
-        btn.addEventListener('click', adicionarQuestaoAoSimulado);
-    });
-
-    // Remover questão
-    questoesSelecionadas.addEventListener('click', function(e) {
-        if (e.target.closest('.remover-questao')) {
-            const questao = e.target.closest('.questao-item');
-            const questaoId = questao.dataset.id;
-            questao.remove();
-            atualizarVisibilidadeBanco();
+    
+            return questao;
+        }
+    
+        // Função para atualizar a visibilidade das questões no banco
+        function atualizarVisibilidadeBanco() {
+            const questoesSelecionadasIds = new Set(Array.from(questoesSelecionadas.children).map(q => q.dataset.id));
+            todasQuestoes.forEach((questao, id) => {
+                let questaoNoBanco = questoesDisponiveis.querySelector(`.questao-disponivel[data-id="${id}"]`);
+                if (questaoNoBanco) {
+                    questaoNoBanco.style.display = questoesSelecionadasIds.has(id) ? 'none' : '';
+                } else if (!questoesSelecionadasIds.has(id)) {
+                    questaoNoBanco = resetarQuestao(questao.cloneNode(true));
+                    questoesDisponiveis.appendChild(questaoNoBanco);
+                }
+                // Adiciona evento de clique para o botão de adicionar
+                const btnAdicionar = questaoNoBanco.querySelector('.adicionar-questao');
+                if (btnAdicionar) {
+                    btnAdicionar.addEventListener('click', adicionarQuestaoAoSimulado);
+                }
+            });
+        }
+    
+        // Função para adicionar questão ao simulado
+        function adicionarQuestaoAoSimulado(e) {
+            e.preventDefault();
+            const questao = this.closest('.questao-disponivel');
+            const questaoClone = questao.cloneNode(true);
+            adicionarAoSimulado(questaoClone);
+            questoesSelecionadas.appendChild(questaoClone);
+            questao.style.display = 'none'; // Esconde a questão no banco
             atualizarNumeracao();
             atualizarContador();
         }
-    });
-
-    function adicionarAoSimulado(item) {
-        item.classList.remove('questao-disponivel');
-        item.classList.add('questao-item');
-        
-        const badges = item.querySelector('.questao-badges');
-        let numeroBadge = badges.querySelector('.badge.bg-secondary');
-        if (!numeroBadge) {
-            numeroBadge = document.createElement('span');
-            numeroBadge.className = 'badge bg-secondary';
-            badges.insertBefore(numeroBadge, badges.firstChild);
-        }
-
-        const btnContainer = item.querySelector('.adicionar-questao');
-        if (btnContainer) {
-            btnContainer.className = 'btn btn-sm btn-outline-danger ms-2 remover-questao';
-            btnContainer.innerHTML = '<i class="bi bi-x-lg"></i>';
-        }
-    }
-
-    function atualizarNumeracao() {
-        questoesSelecionadas.querySelectorAll('.questao-item').forEach((item, index) => {
-            const badge = item.querySelector('.badge.bg-secondary');
-            if (badge) {
-                badge.textContent = index + 1;
+    
+        // Adicionar questão (para questões já no banco)
+        document.querySelectorAll('.adicionar-questao').forEach(btn => {
+            btn.addEventListener('click', adicionarQuestaoAoSimulado);
+        });
+    
+        // Remover questão
+        questoesSelecionadas.addEventListener('click', function(e) {
+            if (e.target.closest('.remover-questao')) {
+                const questao = e.target.closest('.questao-item');
+                const questaoId = questao.dataset.id;
+                questao.remove();
+                
+                // Mostra a questão novamente no banco
+                let questaoNoBanco = questoesDisponiveis.querySelector(`.questao-disponivel[data-id="${questaoId}"]`);
+                if (questaoNoBanco) {
+                    questaoNoBanco.style.display = '';
+                } else {
+                    // Se a questão não existe no banco, cria uma nova entrada
+                    const questaoOriginal = todasQuestoes.get(questaoId);
+                    if (questaoOriginal) {
+                        questaoNoBanco = resetarQuestao(questaoOriginal.cloneNode(true));
+                        questoesDisponiveis.appendChild(questaoNoBanco);
+                        questaoNoBanco.querySelector('.adicionar-questao').addEventListener('click', adicionarQuestaoAoSimulado);
+                    }
+                }
+                
+                atualizarNumeracao();
+                atualizarContador();
             }
         });
-    }
-
-    function atualizarContador() {
-        const count = questoesSelecionadas.children.length;
-        questoesCount.textContent = count;
-        
-        if (count === 0) {
-            emptyState.style.display = 'block';
-        } else {
-            emptyState.style.display = 'none';
-        }
-    }
-
-    // Busca de questões
-    buscaInput.addEventListener('input', function(e) {
-        const termo = e.target.value.toLowerCase();
-        questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
-            const disciplina = questao.dataset.disciplina;
-            const conteudo = questao.dataset.conteudo;
-            const nivel = questao.dataset.nivel;
-            const texto = questao.textContent.toLowerCase();
+    
+        function adicionarAoSimulado(item) {
+            item.classList.remove('questao-disponivel');
+            item.classList.add('questao-item');
             
-            const mostrar = disciplina.includes(termo) || 
-                            conteudo.includes(termo) || 
-                            nivel.includes(termo) ||
-                            texto.includes(termo);
-
-            questao.style.display = mostrar ? '' : 'none';
-        });
-    });
-
-    salvarBtn.addEventListener('click', function() {
-        const questoes = Array.from(questoesSelecionadas.children).map(item => item.dataset.id);
-        
-        if (questoes.length === 0) {
-            alert('Adicione pelo menos uma questão ao simulado antes de salvar.');
-            return;
-        }
-
-        fetch(`{% url 'questions:update_questoes_ordem' simulado.pk %}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            },
-            body: JSON.stringify({ questoes: questoes })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('Simulado salvo com sucesso!');
-                window.location.href = "{% url 'questions:simulado_list' %}";
-            } else {
-                alert('Erro ao salvar o simulado: ' + data.message);
+            const badges = item.querySelector('.questao-badges');
+            let numeroBadge = badges.querySelector('.badge.bg-secondary');
+            if (!numeroBadge) {
+                numeroBadge = document.createElement('span');
+                numeroBadge.className = 'badge bg-secondary';
+                badges.insertBefore(numeroBadge, badges.firstChild);
             }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Erro ao salvar o simulado');
+    
+            const btnContainer = item.querySelector('.adicionar-questao');
+            if (btnContainer) {
+                btnContainer.className = 'btn btn-sm btn-outline-danger ms-2 remover-questao';
+                btnContainer.innerHTML = '<i class="bi bi-x-lg"></i>';
+            }
+        }
+    
+        function atualizarNumeracao() {
+            questoesSelecionadas.querySelectorAll('.questao-item').forEach((item, index) => {
+                const badge = item.querySelector('.badge.bg-secondary');
+                if (badge) {
+                    badge.textContent = index + 1;
+                }
+            });
+        }
+    
+        function atualizarContador() {
+            const count = questoesSelecionadas.children.length;
+            questoesCount.textContent = count;
+            
+            if (count === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+    
+        // Busca de questões
+        buscaInput.addEventListener('input', function(e) {
+            const termo = e.target.value.toLowerCase();
+            questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
+                const disciplina = questao.dataset.disciplina;
+                const conteudo = questao.dataset.conteudo;
+                const nivel = questao.dataset.nivel;
+                const texto = questao.textContent.toLowerCase();
+                
+                const mostrar = disciplina.includes(termo) || 
+                                conteudo.includes(termo) || 
+                                nivel.includes(termo) ||
+                                texto.includes(termo);
+    
+                questao.style.display = mostrar && !questoesSelecionadas.querySelector(`[data-id="${questao.dataset.id}"]`) ? '' : 'none';
+            });
         });
+    
+        salvarBtn.addEventListener('click', function() {
+            const questoes = Array.from(questoesSelecionadas.children).map(item => item.dataset.id);
+            
+            if (questoes.length === 0) {
+                alert('Adicione pelo menos uma questão ao simulado antes de salvar.');
+                return;
+            }
+    
+            fetch(`{% url 'questions:update_questoes_ordem' simulado.pk %}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ questoes: questoes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Simulado salvo com sucesso!');
+                    window.location.href = "{% url 'questions:simulado_list' %}";
+                } else {
+                    alert('Erro ao salvar o simulado: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro ao salvar o simulado');
+            });
+        });
+    
+        // Inicialização
+        inicializarTodasQuestoes();
+        atualizarVisibilidadeBanco();
+        atualizarContador();
     });
-
-    // Inicialização
-    inicializarTodasQuestoes();
-    atualizarVisibilidadeBanco();
-    atualizarContador();
-});
-
-</script>
+    </script>
 {% endblock %}

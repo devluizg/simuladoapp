@@ -218,16 +218,26 @@ def simulado_create(request):
 
 @login_required
 def simulado_edit(request, pk):
+    """View para editar um simulado existente."""
     simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
     
+    questoes_selecionadas = simulado.questoes.all().order_by('questaosimulado__ordem')
+    
+    questoes_disponiveis = Questao.objects.filter(
+        professor=request.user
+    ).exclude(
+        id__in=questoes_selecionadas.values_list('id', flat=True)
+    ).order_by('disciplina', 'conteudo')
+
     if request.method == 'POST':
         form = SimuladoForm(request.POST, instance=simulado)
         if form.is_valid():
-            form.save()
+            simulado = form.save()
             
             # Atualizar as turmas selecionadas
-            turmas = form.cleaned_data['turmas']
-            simulado.classes.set(turmas)
+            if 'turmas' in form.cleaned_data:
+                turmas = form.cleaned_data['turmas']
+                simulado.classes.set(turmas)
             
             messages.success(request, 'Simulado atualizado com sucesso!')
             return redirect('questions:simulado_list')
@@ -237,10 +247,11 @@ def simulado_edit(request, pk):
     context = {
         'form': form,
         'simulado': simulado,
-        'titulo': 'Editar Simulado'
+        'questoes_selecionadas': questoes_selecionadas,
+        'questoes_disponiveis': questoes_disponiveis
     }
     
-    return render(request, 'questions/simulado_form.html', context)
+    return render(request, 'questions/simulado_edit.html', context)
 
 
 @login_required
@@ -371,13 +382,33 @@ def gerar_pdf(request, pk):
 
 
 @login_required
-def gerar_pdf_todos(request):
-    simulados = Simulado.objects.all()
-    # Implemente a lógica para gerar um PDF com todos os simulados
-    # Você pode usar o mesmo SimuladoPDFGenerator ou criar uma nova classe
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="todos_simulados.pdf"'
+def simulado_form(request, pk=None):
+    if pk:
+        simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
+    else:
+        simulado = None
+
+    if request.method == 'POST':
+        form = SimuladoForm(request.POST, instance=simulado, user=request.user)
+        if form.is_valid():
+            simulado = form.save(commit=False)
+            if not simulado.professor:
+                simulado.professor = request.user
+            simulado.save()
+            
+            # Salvar as turmas selecionadas
+            turmas = form.cleaned_data['turmas']
+            simulado.classes.set(turmas)
+            
+            messages.success(request, 'Alterações salvas com sucesso!')
+            return redirect('questions:simulado_form_edit', pk=simulado.pk)
+    else:
+        form = SimuladoForm(instance=simulado, user=request.user)
     
-    # Adicione sua lógica de geração de PDF aqui
-    
-    return response
+    context = {
+        'form': form,
+        'simulado': simulado,
+        'titulo': 'Editar Simulado' if pk else 'Novo Simulado'
+    }
+    return render(request, 'questions/simulado_form.html', context)
+

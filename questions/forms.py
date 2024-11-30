@@ -28,10 +28,9 @@ class QuestaoForm(forms.ModelForm):
             'alternativa_e': CKEditorWidget(config_name='alternativas'),
         }
 
-
 class SimuladoForm(forms.ModelForm):
     turmas = forms.ModelMultipleChoiceField(
-        queryset=Class.objects.all(),
+        queryset=Class.objects.none(),  # Inicialmente vazio, será preenchido no __init__
         widget=forms.CheckboxSelectMultiple(attrs={
             'class': 'form-check-input bg-dark text-light'
         }),
@@ -62,8 +61,15 @@ class SimuladoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        if user:
+            self.fields['turmas'].queryset = Class.objects.filter(user=user)
         self.fields['turmas'].label = "Selecione as Turmas"
+        
+        # Pré-seleciona as turmas ao editar um simulado existente
+        if self.instance.pk:
+            self.initial['turmas'] = self.instance.classes.all()
 
     def clean(self):
         cleaned_data = super().clean()
