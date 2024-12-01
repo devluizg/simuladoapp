@@ -11,7 +11,7 @@ SECRET_KEY = config('SECRET_KEY', default='sua-chave-secreta')
 
 # Segurança do modo debug
 DEBUG = config('DEBUG', default=True, cast=bool)
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost','devluizg.pythonanywhere.com']
+ALLOWED_HOSTS = ['*']
 
 # Aplicativos Instalados
 INSTALLED_APPS = [
@@ -24,9 +24,11 @@ INSTALLED_APPS = [
     'accounts',
     'questions',
     'classes',
+    'api',
     'ckeditor',
     'ckeditor_uploader',
-    'rest_framework',  # Para API
+    'rest_framework',  
+    'rest_framework.authtoken',
     'corsheaders',    # Para CORS
     'django_filters',
     'widget_tweaks',
@@ -49,6 +51,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -62,7 +65,8 @@ REST_FRAMEWORK = {
     ],
 }
 
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000,http://127.0.0.1:3000', cast=lambda v: [s.strip() for s in v.split(',')])
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 
 # Configuração da URL raiz
