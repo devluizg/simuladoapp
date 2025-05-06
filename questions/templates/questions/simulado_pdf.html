@@ -111,78 +111,7 @@
             margin: 8px auto;
         }
 
-        /* Cartão Resposta */
-        .cartao-resposta {
-            page-break-before: always;
-            padding: 20px;
-            border: 2px solid #000;
-        }
-
-        .cartao-titulo {
-            text-align: center;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-        }
-
-        .cartao-grid {
-            display: table;
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 5px;
-        }
-
-        .questao-linha {
-            display: table-row;
-            height: 30px;
-        }
-
-        .numero-questao {
-            display: table-cell;
-            width: 40px;
-            text-align: center;
-            vertical-align: middle;
-            font-weight: bold;
-            border: 1px solid #000;
-        }
-
-        .opcoes {
-            display: table-cell;
-            vertical-align: middle;
-            padding-left: 10px;
-        }
-
-        .opcao {
-            font-family: '123Testing', Arial, sans-serif !important;
-            display: inline-block;
-            width: 25px;
-            height: 25px;
-            border: 2px solid #000;
-            border-radius: 50%;
-            margin: 0 10px;
-            text-align: center;
-            line-height: 25px;
-            font-weight: bold;
-        }
-
-        .identificacao {
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #000;
-        }
-
-        .identificacao p {
-            margin: 5px 0;
-        }
-
-        .linha {
-            border-bottom: 1px solid #000;
-            margin: 5px 0;
-        }
-
-        /* Novo estilo para forçar quebra de página entre simulados */
+        /* Simulado wrapper */
         .simulado-wrapper {
             page-break-after: always;
         }
@@ -239,32 +168,6 @@
                 </div>
             </div>
             {% endfor %}
-        </div>
-
-        <!-- Cartão Resposta -->
-        <div class="cartao-resposta">
-            <div class="cartao-titulo">CARTÃO RESPOSTA - VERSÃO {{ forloop.counter }}</div>
-            
-            <div class="identificacao">
-                <p>Nome: ________________________________________________</p>
-                <p>Data: ____/____/______</p>
-                <p>Assinatura: _________________________________________</p>
-            </div>
-
-            <div class="cartao-grid">
-                {% for questao in questoes|shuffle %}
-                <div class="questao-linha">
-                    <div class="numero-questao">{{ forloop.counter|stringformat:"02d" }}</div>
-                    <div class="opcoes">
-                        <span class="opcao">A</span>
-                        <span class="opcao">B</span>
-                        <span class="opcao">C</span>
-                        <span class="opcao">D</span>
-                        <span class="opcao">E</span>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
         </div>
     </div>
     {% endfor %}

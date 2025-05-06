@@ -36,5 +36,40 @@ class SimuladoSerializer(serializers.ModelSerializer):
 
 class CartaoRespostaSerializer(serializers.Serializer):
     aluno_id = serializers.IntegerField()
-    simulado_id = serializers.IntegerField()
-    respostas = serializers.JSONField()
+    simulado_id = serializers.IntegerField(required=False)  
+    respostas = serializers.DictField(child=serializers.CharField())
+
+class DetalhesRespostaSerializer(serializers.Serializer):
+    """Serializer para os detalhes das respostas de uma questão"""
+    ordem = serializers.CharField()
+    questao_id = serializers.IntegerField()
+    disciplina = serializers.CharField()
+    resposta_aluno = serializers.CharField()
+    resposta_correta = serializers.CharField()
+    acertou = serializers.BooleanField()
+
+class ResultadoSerializer(serializers.Serializer):
+    """Serializer para os resultados de um simulado"""
+    id = serializers.IntegerField(read_only=True)
+    aluno = serializers.CharField(read_only=True)
+    simulado = serializers.CharField(read_only=True)
+    pontuacao = serializers.FloatField(read_only=True)
+    acertos = serializers.IntegerField(read_only=True)
+    total_questoes = serializers.IntegerField(read_only=True)
+    data_correcao = serializers.DateTimeField(read_only=True)
+    detalhes = DetalhesRespostaSerializer(many=True, read_only=True)
+
+class DashboardDisciplinaSerializer(serializers.Serializer):
+    """Serializer para o desempenho por disciplina no dashboard"""
+    disciplina = serializers.CharField()
+    total_questoes = serializers.IntegerField()
+    acertos = serializers.IntegerField()
+    taxa_acerto = serializers.FloatField()
+
+class DashboardAlunoSerializer(serializers.Serializer):
+    """Serializer para o dashboard completo de um aluno"""
+    aluno = serializers.CharField()
+    total_simulados = serializers.IntegerField()
+    media_geral = serializers.FloatField()
+    desempenho_disciplinas = DashboardDisciplinaSerializer(many=True)
+    evolucao_timeline = serializers.ListField(child=serializers.DictField())

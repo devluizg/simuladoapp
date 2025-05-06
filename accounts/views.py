@@ -1,3 +1,4 @@
+#accounts/views.py
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, get_user_model
@@ -17,10 +18,6 @@ from django.contrib.auth.forms import SetPasswordForm
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.contrib.sites.shortcuts import get_current_site
-from django.utils.http import urlsafe_base64_encode
-from django.template.loader import render_to_string
-from django.utils.encoding import force_bytes
-from django.contrib.auth.tokens import default_token_generator
 
 User = get_user_model()
 
@@ -34,104 +31,57 @@ def generate_unique_username(first_name):
     return username
 
 def register(request):
-    if request.user.is_authenticated:
-        return redirect('accounts:dashboard')
-
+    """
+    View para registro de novos usuários.
+    """
     if request.method == 'POST':
-        # Verifica se é uma solicitação de reenvio
+        # Verifica se é uma solicitação de reenvio de email
         if 'resend_email' in request.POST:
-            email = request.POST.get('email')
-            try:
-                user = User.objects.get(email=email, is_active=False)
-                
-                # Atualiza o token e a data de expiração
-                user.activation_token = uuid.uuid4()
-                user.activation_token_expiry = timezone.now() + timedelta(days=2)
-                user.save()
-                
-                # Reenvia o email
-                activation_link = request.build_absolute_uri(
-                    reverse('accounts:activate', kwargs={'token': str(user.activation_token)})
-                )
-                
-                html_message = render_to_string('accounts/activation_email.html', {
-                    'user': user,
-                    'activation_link': activation_link,
-                })
-                
-                send_mail(
-                    'Ative sua conta - Novo Link',
-                    strip_tags(html_message),
-                    settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    html_message=html_message,
-                    fail_silently=False,
-                )
-                
-                messages.success(
-                    request,
-                    'Um novo email de ativação foi enviado. Por favor, verifique sua caixa de entrada.'
-                )
-                return redirect('accounts:login')
-            except User.DoesNotExist:
-                messages.error(
-                    request,
-                    'Email não encontrado ou conta já ativada.'
-                )
-                return redirect('accounts:register')
-
-        # Processo normal de registro
+            return resend_activation_email(request)
+        
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.username = generate_unique_username(form.cleaned_data['first_name'])
+            user.activation_token = str(uuid.uuid4())
+            user.activation_token_expiry = timezone.now() + timedelta(days=1)
             user.is_active = False
-            user.activation_token = uuid.uuid4()
-            user.activation_token_expiry = timezone.now() + timedelta(days=2)
+            
+            # Primeiro salva o usuário para que envio de email não falhe com usuário inexistente
             user.save()
             
-            # Envio do email de confirmação
-            activation_link = request.build_absolute_uri(
-                reverse('accounts:activate', kwargs={'token': str(user.activation_token)})
-            )
-            
-            html_message = render_to_string('accounts/activation_email.html', {
-                'user': user,
-                'activation_link': activation_link,
-            })
-            
-            try:
-                send_mail(
-                    'Ative sua conta',
-                    strip_tags(html_message),
-                    settings.DEFAULT_FROM_EMAIL,
-                    [user.email],
-                    html_message=html_message,
-                    fail_silently=False,
-                )
-                
-                # Retorna JSON se for uma requisição AJAX
+            # Agora envia o email de ativação
+            if send_activation_email(request, user):
+                # Se for uma requisição AJAX, retorna resposta JSON
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': True,
-                        'email': user.email,
-                        'message': 'Cadastro realizado com sucesso! Por favor, verifique seu email para ativar sua conta.'
+                        'message': 'Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.'
                     })
                 
-                messages.success(
-                    request,
-                    'Cadastro realizado com sucesso! Por favor, verifique seu email para ativar sua conta.'
-                )
+                # Se não for AJAX, redireciona para a página de login com mensagem
+                messages.success(request, 'Cadastro realizado com sucesso! Verifique seu email para ativar sua conta.')
                 return redirect('accounts:login')
-            
-            except Exception as e:
-                user.delete()
+            else:
+                # Se houver erro no envio do email
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': False,
-                        'message': 'Erro ao enviar email de confirmação. Por favor, tente novamente.'
+                        'message': 'Erro ao enviar email de ativação. Por favor, tente novamente mais tarde.'
                     })
-                messages.error(request, 'Erro ao enviar email de confirmação. Por favor, tente novamente.')
+                
+                messages.error(request, 'Erro ao enviar email de ativação. Por favor, tente novamente mais tarde.')
+        else:
+            # Se o formulário for inválido e for uma requisição AJAX
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = [str(error) for error in error_list]
+                
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Erro ao processar o formulário. Verifique os campos e tente novamente.',
+                    'errors': errors
+                })
     else:
         form = CustomUserCreationForm()
     
@@ -140,16 +90,22 @@ def register(request):
 def activate_account(request, token):
     try:
         user = User.objects.get(activation_token=token, is_active=False)
+        
+        # Verifica se o token não expirou
         if timezone.now() < user.activation_token_expiry:
+            # Ativa a conta e marca o email como verificado
             user.is_active = True
             user.email_verified = True
+            
+            # Substitui o token por um UUID válido que indica "token usado"
+            user.activation_token = uuid.UUID('00000000-0000-0000-0000-000000000000')
             user.save()
             
             messages.success(request, 'Sua conta foi ativada com sucesso! Agora você pode fazer login.')
             return render(request, 'accounts/activation_success.html')
         else:
-            messages.error(request, 'O link de ativação expirou. Por favor, registre-se novamente.')
-            return render(request, 'accounts/activation_failed.html')
+            messages.error(request, 'O link de ativação expirou. Por favor, solicite um novo link de ativação.')
+            return render(request, 'accounts/activation_failed.html', {'email': user.email})
     except User.DoesNotExist:
         messages.error(
             request,
@@ -236,58 +192,99 @@ def password_reset_done(request):
 def password_reset_complete(request):
     return render(request, 'accounts/password_reset_complete.html')
 
-@login_required
-def resend_activation(request):
-    if request.method == 'POST':
-        user = request.user
-        
-        # Verifica se o email já está verificado
-        if user.email_verified:
-            messages.info(request, 'Seu email já está verificado.')
-            return redirect('accounts:dashboard')
-        
-        # Verifica se já foi enviado um email recentemente
-        if hasattr(user, 'activation_token_expiry') and user.activation_token_expiry:
-            time_since_last_email = timezone.now() - user.activation_token_expiry + timedelta(days=1)
-            if time_since_last_email < timedelta(minutes=5):
-                messages.warning(request, 
-                    'Por favor, aguarde 5 minutos antes de solicitar um novo email de verificação.')
-                return redirect('accounts:dashboard')
-        
-        # Gera novo token e atualiza data de expiração
-        user.activation_token = uuid.uuid4()
-        user.activation_token_expiry = timezone.now() + timedelta(days=1)
-        user.save()
-        
-        # Prepara e envia o email
-        activation_link = request.build_absolute_uri(
-            reverse('accounts:activate', kwargs={'token': str(user.activation_token)})
-        )
-        
-        context = {
-            'user': user,
-            'activation_link': activation_link,
-        }
-        
-        html_message = render_to_string('accounts/email/activation_email.html', context)
+def send_activation_email(request, user):
+    """
+    Função auxiliar para enviar o email de ativação.
+    """
+    # Construa o link de ativação completo
+    activation_link = request.build_absolute_uri(
+        reverse('accounts:activate', kwargs={'token': user.activation_token})
+    )
+    
+    # Contexto para o template do email
+    context = {
+        'user': user,
+        'activation_link': activation_link,
+        'expiry_days': 1  # Dias até a expiração do token
+    }
+    
+    # Renderiza o conteúdo do email
+    subject = 'Ative sua conta na SimuladoApp'
+    try:
+        # Usar diretamente o template existente
+        html_message = render_to_string('accounts/activation_email.html', context)
         plain_message = strip_tags(html_message)
         
+        # Envia o email
+        send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=False
+        )
+        return True
+    except Exception as e:
+        print(f"Erro ao enviar e-mail: {e}")
+        return False
+
+def resend_activation_email(request):
+    """
+    View para reenviar o email de ativação.
+    """
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        
         try:
-            send_mail(
-                'Ative sua conta - Novo Link',
-                plain_message,
-                None,  # Usa o DEFAULT_FROM_EMAIL do settings.py
-                [user.email],
-                html_message=html_message,
-                fail_silently=False,
-            )
-            messages.success(request, 
-                'Um novo email de verificação foi enviado. Por favor, verifique sua caixa de entrada.')
-        except Exception as e:
-            messages.error(request, 
-                'Ocorreu um erro ao enviar o email. Por favor, tente novamente mais tarde.')
+            user = User.objects.get(email=email)
             
-    return redirect('accounts:dashboard')
+            # Verifica se o usuário já está ativo
+            if user.is_active:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Esta conta já está ativa. Por favor, faça login.'
+                    })
+                messages.info(request, 'Esta conta já está ativa. Por favor, faça login.')
+                return redirect('accounts:login')
+            
+            # Gera novo token e atualiza data de expiração
+            user.activation_token = str(uuid.uuid4())
+            user.activation_token_expiry = timezone.now() + timedelta(days=1)
+            user.save()
+            
+            # Envia o email de ativação
+            if send_activation_email(request, user):
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Um novo email de ativação foi enviado. Por favor, verifique sua caixa de entrada.'
+                    })
+                messages.success(request, 'Um novo email de ativação foi enviado. Por favor, verifique sua caixa de entrada.')
+            else:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Ocorreu um erro ao enviar o email. Por favor, tente novamente mais tarde.'
+                    })
+                messages.error(request, 'Ocorreu um erro ao enviar o email. Por favor, tente novamente mais tarde.')
+                
+        except User.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Email não encontrado no sistema.'
+                })
+            messages.error(request, 'Email não encontrado no sistema.')
+        
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': False,
+            'message': 'Método não permitido.'
+        })
+        
+    return redirect('accounts:login')
 
 @login_required
 def profile_update(request):

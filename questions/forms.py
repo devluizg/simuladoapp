@@ -61,14 +61,17 @@ class SimuladoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        # Extrair o usuário dos kwargs antes de passar para super().__init__
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        
+        # Configurar o queryset das turmas se o usuário for fornecido
         if user:
             self.fields['turmas'].queryset = Class.objects.filter(user=user)
         self.fields['turmas'].label = "Selecione as Turmas"
         
         # Pré-seleciona as turmas ao editar um simulado existente
-        if self.instance.pk:
+        if self.instance.pk and hasattr(self.instance, 'classes'):
             self.initial['turmas'] = self.instance.classes.all()
 
     def clean(self):

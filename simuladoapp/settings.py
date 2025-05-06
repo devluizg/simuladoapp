@@ -1,17 +1,22 @@
 from pathlib import Path
 import os
 from datetime import timedelta
+
+from dotenv import load_dotenv  # <- importa o load_dotenv
 from decouple import config
 
 # Diretório base do projeto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Configurações de Segurança
+# ⚠️ Carrega o .env manualmente, antes de chamar config()
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, '.env'))
+
+# Agora sim, use config normalmente
 SECRET_KEY = config('SECRET_KEY', default='sua-chave-secreta')
 
-# Segurança do modo debug
 DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = ['*']
+
 
 # Aplicativos Instalados
 INSTALLED_APPS = [
@@ -49,6 +54,7 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # << JWT primeiro
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.TokenAuthentication',
@@ -64,6 +70,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
 }
+
 
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -152,19 +159,47 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Configurações de Email
+# Configurações de Email (sem usar .env, com valores diretos)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT =  465
-EMAIL_USE_SSL = True
-EMAIL_USE_TLS = False
-EMAIL_HOST_USER = config('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = 'ClasseVirtual <no-reply@classevirtual.com>'
-
-EMAIL_USE_LOCALTIME = True
-EMAIL_TIMEOUT = 20  # seconds
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False  # IMPORTANTE: deve ser False se TLS estiver True
+EMAIL_HOST_USER = 'luizgabriel3714@gmail.com'
+EMAIL_HOST_PASSWORD = 'dizejxicjjoqgyyd'  # Senha de app do Gmail
+DEFAULT_FROM_EMAIL = 'SimuladoApp <luizgabriel3714@gmail.com>'
+EMAIL_TIMEOUT = 20
 DEFAULT_CHARSET = 'utf-8'
+
+# JWT Settings - add these to your settings.py
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'USER_AUTHENTICATION_RULE': 'rest_framework_simplejwt.authentication.default_user_authentication_rule',
+    
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+    
+    'JTI_CLAIM': 'jti',
+    
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+}
 
 # Configurações de Segurança Adicionais
 PASSWORD_HASHERS = [

@@ -1,3 +1,4 @@
+#questions/views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -194,7 +195,7 @@ def simulado_list(request):
 @login_required
 def simulado_create(request):
     if request.method == 'POST':
-        form = SimuladoForm(request.POST)
+        form = SimuladoForm(request.POST, user=request.user)
         if form.is_valid():
             simulado = form.save(commit=False)
             simulado.professor = request.user
@@ -207,7 +208,7 @@ def simulado_create(request):
             messages.success(request, 'Simulado criado com sucesso!')
             return redirect('questions:simulado_edit', pk=simulado.pk)
     else:
-        form = SimuladoForm()
+        form = SimuladoForm(user=request.user)
     
     context = {
         'form': form,
@@ -230,7 +231,7 @@ def simulado_edit(request, pk):
     ).order_by('disciplina', 'conteudo')
 
     if request.method == 'POST':
-        form = SimuladoForm(request.POST, instance=simulado)
+        form = SimuladoForm(request.POST, instance=simulado, user=request.user)
         if form.is_valid():
             simulado = form.save()
             
@@ -242,7 +243,7 @@ def simulado_edit(request, pk):
             messages.success(request, 'Simulado atualizado com sucesso!')
             return redirect('questions:simulado_list')
     else:
-        form = SimuladoForm(instance=simulado)
+        form = SimuladoForm(instance=simulado, user=request.user)
 
     context = {
         'form': form,
@@ -275,9 +276,12 @@ def simulado_delete(request, pk):
 
 @login_required
 def simulado_detail(request, pk):
-    """View para exibir detalhes de um simulado."""
+    """View para exibir detalhes de um simulado e seus gabaritos."""
     simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
     questoes = simulado.questoes.all().order_by('questaosimulado__ordem')
+    
+    # Aqui você poderia adicionar lógica para calcular diferentes embaralhamentos
+    # por enquanto estamos usando uma simulação no template
     
     return render(request, 'questions/simulado_detail.html', {
         'simulado': simulado,
@@ -362,20 +366,55 @@ def update_questoes_ordem(request, pk):
 
 @login_required
 def gerar_pdf(request, pk):
-    """View para gerar o PDF do simulado com 5 versões."""
+    """View para gerar o PDF do simulado com 5 versões e cartão resposta atualizado."""
     simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
     questoes = list(simulado.questoes.all().order_by('questaosimulado__ordem'))
     
-    html_string = render_to_string('questions/simulado_pdf.html', {
-        'simulado': simulado,
-        'questoes': questoes,
-        'MEDIA_ROOT': settings.MEDIA_ROOT,
-    })
-    
-    with tempfile.NamedTemporaryFile(suffix='.pdf') as output:
-        HTML(string=html_string).write_pdf(output)
-        output.seek(0)
-        response = HttpResponse(output.read(), content_type='application/pdf')
+    # Criar diretório temporário para os arquivos
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Gerar o PDF principal do simulado
+        html_string = render_to_string('questions/simulado_pdf.html', {
+            'simulado': simulado,
+            'questoes': questoes,
+            'MEDIA_ROOT': settings.MEDIA_ROOT,
+        })
+        
+        simulado_pdf_path = os.path.join(tmpdirname, f'simulado_{simulado.pk}.pdf')
+        HTML(string=html_string).write_pdf(simulado_pdf_path)
+        
+        # Gerar cartão resposta usando a nova função
+        from .pdf_generator import gerar_cartao_resposta_pdf
+        
+        # Gerar um cartão de resposta para cada versão (1-5)
+        cartoes_resposta = []
+        for versao in range(1, 6):
+            # Agora passamos o número do tipo (1-5) para a função
+            cartao_path = gerar_cartao_resposta_pdf(tmpdirname, versao, versao, len(questoes))
+            cartoes_resposta.append(cartao_path)
+        
+        # Combinar todos os PDFs (simulado + cartões resposta)
+        from PyPDF2 import PdfMerger
+        
+        merger = PdfMerger()
+        
+        # Adicionar simulado
+        merger.append(simulado_pdf_path)
+        
+        # Adicionar cartões de resposta
+        for cartao_path in cartoes_resposta:
+            if os.path.exists(cartao_path):
+                merger.append(cartao_path)
+        
+        # Salvar PDF combinado
+        output_path = os.path.join(tmpdirname, f'simulado_{simulado.pk}_completo.pdf')
+        merger.write(output_path)
+        merger.close()
+        
+        # Retornar o PDF combinado
+        with open(output_path, 'rb') as f:
+            pdf_content = f.read()
+            
+        response = HttpResponse(pdf_content, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="simulado_{simulado.pk}_5versoes.pdf"'
         
     return response
@@ -383,17 +422,21 @@ def gerar_pdf(request, pk):
 
 @login_required
 def simulado_form(request, pk=None):
+    """View para criar ou editar um simulado."""
+    # Inicializa o simulado como None (para criação)
+    simulado = None
+    
+    # Se um pk foi fornecido, tenta buscar o simulado existente
     if pk:
         simulado = get_object_or_404(Simulado, pk=pk, professor=request.user)
-    else:
-        simulado = None
-
+    
     if request.method == 'POST':
+        # Passa o parâmetro user para o formulário
         form = SimuladoForm(request.POST, instance=simulado, user=request.user)
         if form.is_valid():
             simulado = form.save(commit=False)
-            if not simulado.professor:
-                simulado.professor = request.user
+            # Sempre define o professor como o usuário atual antes de salvar
+            simulado.professor = request.user
             simulado.save()
             
             # Salvar as turmas selecionadas
@@ -401,8 +444,9 @@ def simulado_form(request, pk=None):
             simulado.classes.set(turmas)
             
             messages.success(request, 'Alterações salvas com sucesso!')
-            return redirect('questions:simulado_form_edit', pk=simulado.pk)
+            return redirect('questions:simulado_edit', pk=simulado.pk)
     else:
+        # Passa o parâmetro user para o formulário
         form = SimuladoForm(instance=simulado, user=request.user)
     
     context = {
@@ -411,4 +455,3 @@ def simulado_form(request, pk=None):
         'titulo': 'Editar Simulado' if pk else 'Novo Simulado'
     }
     return render(request, 'questions/simulado_form.html', context)
-

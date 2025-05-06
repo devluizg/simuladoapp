@@ -3,8 +3,6 @@ from io import BytesIO
 import PyPDF2
 import re
 
-from classes.models import Student
-
 def extract_students_from_pdf(pdf_file):
     """Extrai nomes de alunos de um arquivo PDF do Diário de Classe Digital."""
     students = []
@@ -19,28 +17,37 @@ def extract_students_from_pdf(pdf_file):
         for match in matches:
             name = match.group(1).strip()
             if name and len(name) > 2:  # Evita nomes muito curtos
-                students.append({
-                    'name': name,
-                    'email': None  # PDF normalmente não terá email
-                })
+                # Verificar se o nome já existe na lista
+                if not any(s['name'] == name for s in students):
+                    students.append({
+                        'name': name,
+                        'email': None  # PDF normalmente não terá email
+                    })
     
     return students
 
 def extract_students_from_excel(excel_file):
     """Extrai nomes de alunos de um arquivo Excel do Diário de Classe Digital."""
-    df = pd.read_excel(excel_file)
+    try:
+        df = pd.read_excel(excel_file)
+    except Exception as e:
+        raise ValueError(f"Erro ao ler arquivo Excel: {str(e)}")
     
     # Procura por colunas de nome e email
     name_column = None
     email_column = None
     
-    # Procura por colunas com nomes
+    # Procura por colunas com nomes relacionados
     for col in df.columns:
-        col_lower = col.lower().strip()
+        col_lower = str(col).lower().strip()
         if 'aluno' in col_lower or 'nome' in col_lower:
             name_column = col
         elif 'email' in col_lower or 'e-mail' in col_lower:
             email_column = col
+    
+    # Se não encontrou colunas específicas, assume que a primeira coluna contém os nomes
+    if name_column is None and len(df.columns) > 0:
+        name_column = df.columns[0]
     
     if name_column is None:
         raise ValueError("Não foi possível encontrar a coluna com nomes dos alunos")
@@ -48,35 +55,24 @@ def extract_students_from_excel(excel_file):
     students = []
     for _, row in df.iterrows():
         name = str(row[name_column]).strip()
-        if name and name.lower() != 'nan' and name.lower() != 'aluno(a)':
-            email = str(row[email_column]).strip() if email_column else None
-            # Verifica se o email é válido
-            if email and (email.lower() == 'nan' or len(email) < 5):
-                email = None
-                
-            students.append({
-                'name': name,
-                'email': email
-            })
+        if name and name.lower() != 'nan' and name.lower() != 'aluno(a)' and len(name) > 2:
+            email = None
+            if email_column:
+                email_value = str(row[email_column]).strip()
+                if email_value and email_value.lower() != 'nan' and '@' in email_value:
+                    email = email_value
+            
+            # Verificar se o nome já existe na lista
+            if not any(s['name'] == name for s in students):
+                students.append({
+                    'name': name,
+                    'email': email
+                })
     
     return students
 
-def process_students_file(file, turma):
-    """Processa o arquivo e cria os alunos na turma especificada."""
-    if file.name.endswith('.pdf'):
-        students_data = extract_students_from_pdf(file)
-    elif file.name.endswith('.xlsx') or file.name.endswith('.xls'):
-        students_data = extract_students_from_excel(file)
-    else:
-        raise ValueError("Formato de arquivo não suportado")
-    
-    # Criar os alunos com IDs sequenciais
-    for i, student_data in enumerate(students_data, 1):
-        student = Student.objects.create(
-            name=student_data['name'],
-            email=student_data['email'],
-            student_id=i
-        )
-        student.classes.add(turma)
-    
-    return len(students_data)  # Retorna quantidade de alunos criados
+def get_next_student_id(user):
+    """Determina o próximo ID disponível para um novo aluno."""
+    from classes.models import Student
+    last_student = Student.objects.filter(user=user).order_by('-student_id').first()
+    return (last_student.student_id + 1) if last_student else 1

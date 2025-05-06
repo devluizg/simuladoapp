@@ -15,7 +15,7 @@ urlpatterns = [
     ), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', views.dashboard, name='dashboard'),
-    path('resend-activation/', views.resend_activation, name='resend_activation'),  
+    path('resend-activation/', views.resend_activation_email, name='resend_activation'),  
     path('profile/update/', views.profile_update, name='profile_update'),
 
     # Redefinição de senha

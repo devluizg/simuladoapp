@@ -49,7 +49,12 @@
 
                     <div class="mb-3">
                         <label for="{{ form.password1.id_for_label }}" class="form-label">Senha</label>
-                        {{ form.password1 }}
+                        <div class="input-group">
+                            {{ form.password1 }}
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="{{ form.password1.id_for_label }}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                         <div class="form-text text-light">
                             A senha deve ter pelo menos 8 caracteres e conter letras maiúsculas, minúsculas, números e caracteres especiais.
                         </div>
@@ -57,7 +62,12 @@
 
                     <div class="mb-3">
                         <label for="{{ form.password2.id_for_label }}" class="form-label">Confirme a Senha</label>
-                        {{ form.password2 }}
+                        <div class="input-group">
+                            {{ form.password2 }}
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="{{ form.password2.id_for_label }}">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="d-grid gap-2">
@@ -93,7 +103,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="post" id="resend-form">
+                <form method="post" id="resend-form" action="{% url 'accounts:resend_activation' %}">
                     {% csrf_token %}
                     <input type="hidden" name="resend_email" value="true">
                     <div class="mb-3">
@@ -130,46 +140,188 @@ document.addEventListener('DOMContentLoaded', function() {
             field.classList.add('form-control', 'bg-dark', 'text-light');
         }
     });
+    
+    // Adiciona funcionalidade para mostrar/ocultar senha
+    const toggleButtons = document.querySelectorAll('.toggle-password');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const passwordField = document.getElementById(targetId);
+            
+            // Alterna o tipo do campo entre "password" e "text"
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                this.innerHTML = '<i class="bi bi-eye-slash"></i>';
+            } else {
+                passwordField.type = 'password';
+                this.innerHTML = '<i class="bi bi-eye"></i>';
+            }
+        });
+    });
 
     // Manipula o envio do formulário principal
     const form = document.getElementById('registration-form');
-    form.addEventListener('submit', async function(e) {
+    
+    form.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        try {
-            const response = await fetch(window.location.href, {
-                method: 'POST',
-                body: new FormData(form),
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // Mostra mensagem de sucesso
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-success alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <strong><i class="bi bi-check-circle-fill"></i> Sucesso!</strong> ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                form.parentNode.insertBefore(alertDiv, form);
-                form.reset();
-            } else {
-                // Mostra mensagem de erro
-                const alertDiv = document.createElement('div');
-                alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-                alertDiv.innerHTML = `
-                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Erro!</strong> ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                `;
-                form.parentNode.insertBefore(alertDiv, form);
+        const formData = new FormData(form);
+        const submitButton = form.querySelector('button[type="submit"]');
+        
+        // Desabilita o botão durante o processamento
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processando...';
+        
+        // Remove alertas anteriores
+        const existingAlerts = form.parentNode.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+        
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
             }
-        } catch (error) {
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Reativa o botão
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Registrar <i class="bi bi-person-plus-fill"></i>';
+            
+            // Cria a mensagem de alerta
+            const alertDiv = document.createElement('div');
+            alertDiv.role = 'alert';
+            alertDiv.className = `alert ${data.success ? 'alert-success' : 'alert-danger'} alert-dismissible fade show`;
+            
+            // Adiciona o conteúdo do alerta
+            let icon = data.success ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+            let title = data.success ? 'Sucesso!' : 'Erro!';
+            
+            alertDiv.innerHTML = `
+                <strong><i class="bi ${icon}"></i> ${title}</strong> ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Insere o alerta antes do formulário
+            form.parentNode.insertBefore(alertDiv, form);
+            
+            // Se o registro foi bem-sucedido, limpa o formulário
+            if (data.success) {
+                form.reset();
+                
+                // Redireciona para a página de login após 3 segundos
+                setTimeout(() => {
+                    window.location.href = "{% url 'accounts:login' %}";
+                }, 3000);
+            } else if (data.errors) {
+                // Exibe erros específicos de cada campo
+                for (const [field, errors] of Object.entries(data.errors)) {
+                    const fieldElement = document.getElementById(`id_${field}`);
+                    if (fieldElement) {
+                        fieldElement.classList.add('is-invalid');
+                        
+                        // Cria um elemento para exibir a mensagem de erro
+                        const invalidFeedback = document.createElement('div');
+                        invalidFeedback.className = 'invalid-feedback';
+                        invalidFeedback.textContent = errors[0];
+                        
+                        // Insere após o campo
+                        fieldElement.parentNode.appendChild(invalidFeedback);
+                    }
+                }
+            }
+        })
+        .catch(error => {
             console.error('Erro:', error);
-        }
+            
+            // Reativa o botão
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Registrar <i class="bi bi-person-plus-fill"></i>';
+            
+            // Cria mensagem de erro
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <strong><i class="bi bi-exclamation-triangle-fill"></i> Erro!</strong> Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            form.parentNode.insertBefore(alertDiv, form);
+        });
+    });
+    
+    // Manipula o envio do formulário de reenvio
+    const resendForm = document.getElementById('resend-form');
+    
+    resendForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(resendForm);
+        const submitButton = resendForm.querySelector('button[type="submit"]');
+        
+        // Desabilita o botão durante o processamento
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
+        
+        fetch("{% url 'accounts:resend_activation' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Reativa o botão
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Reenviar Email <i class="bi bi-envelope"></i>';
+            
+            // Fecha o modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('resendModal'));
+            modal.hide();
+            
+            // Cria a mensagem de alerta na página principal
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${data.success ? 'alert-success' : 'alert-danger'} alert-dismissible fade show`;
+            
+            let icon = data.success ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill';
+            let title = data.success ? 'Sucesso!' : 'Erro!';
+            
+            alertDiv.innerHTML = `
+                <strong><i class="bi ${icon}"></i> ${title}</strong> ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            // Insere o alerta no topo da página
+            const registerForm = document.getElementById('register-form');
+            registerForm.parentNode.insertBefore(alertDiv, registerForm);
+            
+            // Limpa o formulário
+            resendForm.reset();
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            
+            // Reativa o botão
+            submitButton.disabled = false;
+            submitButton.innerHTML = 'Reenviar Email <i class="bi bi-envelope"></i>';
+            
+            // Fecha o modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('resendModal'));
+            modal.hide();
+            
+            // Cria mensagem de erro
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <strong><i class="bi bi-exclamation-triangle-fill"></i> Erro!</strong> Ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            const registerForm = document.getElementById('register-form');
+            registerForm.parentNode.insertBefore(alertDiv, registerForm);
+        });
     });
 });
 </script>

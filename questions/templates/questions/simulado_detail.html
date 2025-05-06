@@ -3,69 +3,163 @@
 {% block content %}
 <div class="container mt-4">
     <div class="card bg-dark text-white">
-        <div class="card-header">
-            <h2>{{ simulado.titulo }}</h2>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2>{{ simulado.titulo }} - Gabarito</h2>
+            <span class="badge bg-primary">{{ simulado.questoes.count }} questões</span>
         </div>
         <div class="card-body">
-            {% if simulado.cabecalho %}
-            <div class="mb-4">
-                <h4>Cabeçalho</h4>
-                <div>{{ simulado.cabecalho|safe }}</div>
-            </div>
-            {% endif %}
-
-            {% if simulado.instrucoes %}
-            <div class="mb-4">
-                <h4>Instruções</h4>
-                <div>{{ simulado.instrucoes|safe }}</div>
-            </div>
-            {% endif %}
-
-            <div class="mb-4">
-                <h4>Questões</h4>
-                {% if simulado.questoes.all %}
-                    <ol>
-                    {% for questao in simulado.questoes.all %}
-                        <li class="mb-3">
-                            <div class="questao">
-                                <div class="enunciado mb-2">{{ questao.enunciado|safe }}</div>
-                                {% if questao.imagem %}
-                                    <img src="{{ questao.imagem.url }}" alt="Imagem da questão" class="img-fluid mb-2">
-                                {% endif %}
-                                <div class="alternativas">
-                                    {% if questao.alternativa_a %}
-                                    <p>a) {{ questao.alternativa_a|safe }}</p>
-                                    {% endif %}
-                                    {% if questao.alternativa_b %}
-                                    <p>b) {{ questao.alternativa_b|safe }}</p>
-                                    {% endif %}
-                                    {% if questao.alternativa_c %}
-                                    <p>c) {{ questao.alternativa_c|safe }}</p>
-                                    {% endif %}
-                                    {% if questao.alternativa_d %}
-                                    <p>d) {{ questao.alternativa_d|safe }}</p>
-                                    {% endif %}
-                                    {% if questao.alternativa_e %}
-                                    <p>e) {{ questao.alternativa_e|safe }}</p>
-                                    {% endif %}
+            {% if simulado.questoes.all %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th scope="col">Questão</th>
+                                <th scope="col">Tipo 1</th>
+                                <th scope="col">Tipo 2</th>
+                                <th scope="col">Tipo 3</th>
+                                <th scope="col">Tipo 4</th>
+                                <th scope="col">Tipo 5</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for questao in questoes %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <!-- Tipo 1: Gabarito original -->
+                                <td class="text-center">{{ questao.resposta_correta|upper }}</td>
+                                <!-- Tipo 2: Embaralhamento ABCDE → EABCD -->
+                                <td class="text-center">
+                                    {% if questao.resposta_correta == 'A' %}E{% endif %}
+                                    {% if questao.resposta_correta == 'B' %}A{% endif %}
+                                    {% if questao.resposta_correta == 'C' %}B{% endif %}
+                                    {% if questao.resposta_correta == 'D' %}C{% endif %}
+                                    {% if questao.resposta_correta == 'E' %}D{% endif %}
+                                </td>
+                                <!-- Tipo 3: Embaralhamento ABCDE → DEABC -->
+                                <td class="text-center">
+                                    {% if questao.resposta_correta == 'A' %}D{% endif %}
+                                    {% if questao.resposta_correta == 'B' %}E{% endif %}
+                                    {% if questao.resposta_correta == 'C' %}A{% endif %}
+                                    {% if questao.resposta_correta == 'D' %}B{% endif %}
+                                    {% if questao.resposta_correta == 'E' %}C{% endif %}
+                                </td>
+                                <!-- Tipo 4: Embaralhamento ABCDE → CDEAB -->
+                                <td class="text-center">
+                                    {% if questao.resposta_correta == 'A' %}C{% endif %}
+                                    {% if questao.resposta_correta == 'B' %}D{% endif %}
+                                    {% if questao.resposta_correta == 'C' %}E{% endif %}
+                                    {% if questao.resposta_correta == 'D' %}A{% endif %}
+                                    {% if questao.resposta_correta == 'E' %}B{% endif %}
+                                </td>
+                                <!-- Tipo 5: Embaralhamento ABCDE → BCDEA -->
+                                <td class="text-center">
+                                    {% if questao.resposta_correta == 'A' %}B{% endif %}
+                                    {% if questao.resposta_correta == 'B' %}C{% endif %}
+                                    {% if questao.resposta_correta == 'C' %}D{% endif %}
+                                    {% if questao.resposta_correta == 'D' %}E{% endif %}
+                                    {% if questao.resposta_correta == 'E' %}A{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <h4>Legenda de Embaralhamento</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-secondary mb-3">
+                                <div class="card-header">Como interpretar este gabarito</div>
+                                <div class="card-body">
+                                    <p>Este gabarito mostra as respostas corretas para cada versão do simulado:</p>
+                                    <ul>
+                                        <li><strong>Tipo 1:</strong> Questões na ordem original</li>
+                                        <li><strong>Tipo 2-5:</strong> Questões com alternativas embaralhadas</li>
+                                    </ul>
+                                    <p>Cada letra (A, B, C, D, E) corresponde à alternativa correta na respectiva versão do simulado.</p>
                                 </div>
                             </div>
-                        </li>
-                    {% endfor %}
-                    </ol>
-                {% else %}
-                    <p>Nenhuma questão adicionada a este simulado.</p>
-                {% endif %}
-            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-secondary">
+                                <div class="card-header">Correspondência nas Versões</div>
+                                <div class="card-body">
+                                    <table class="table table-sm table-dark">
+                                        <thead>
+                                            <tr>
+                                                <th>Original</th>
+                                                <th>Tipo 1</th>
+                                                <th>Tipo 2</th>
+                                                <th>Tipo 3</th>
+                                                <th>Tipo 4</th>
+                                                <th>Tipo 5</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>A</td>
+                                                <td>A</td>
+                                                <td>E</td>
+                                                <td>D</td>
+                                                <td>C</td>
+                                                <td>B</td>
+                                            </tr>
+                                            <tr>
+                                                <td>B</td>
+                                                <td>B</td>
+                                                <td>A</td>
+                                                <td>E</td>
+                                                <td>D</td>
+                                                <td>C</td>
+                                            </tr>
+                                            <tr>
+                                                <td>C</td>
+                                                <td>C</td>
+                                                <td>B</td>
+                                                <td>A</td>
+                                                <td>E</td>
+                                                <td>D</td>
+                                            </tr>
+                                            <tr>
+                                                <td>D</td>
+                                                <td>D</td>
+                                                <td>C</td>
+                                                <td>B</td>
+                                                <td>A</td>
+                                                <td>E</td>
+                                            </tr>
+                                            <tr>
+                                                <td>E</td>
+                                                <td>E</td>
+                                                <td>D</td>
+                                                <td>C</td>
+                                                <td>B</td>
+                                                <td>A</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    Nenhuma questão adicionada a este simulado.
+                </div>
+            {% endif %}
         </div>
         <div class="card-footer">
             <div class="btn-group">
                 <a href="{% url 'questions:simulado_edit' simulado.id %}" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-pencil"></i> Editar
                 </a>
-                </a>
                 <a href="{% url 'questions:simulado_list' %}" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+                <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-file-pdf"></i> PDF
                 </a>
             </div>
         </div>
@@ -76,15 +170,14 @@
 body {
     background-color: #212529;
 }
-.questao {
-    margin-bottom: 2rem;
+.table-responsive {
+    overflow-x: auto;
 }
-.enunciado {
-    font-weight: 500;
+.table {
+    margin-bottom: 0;
 }
-.alternativas p {
-    margin-bottom: 0.5rem;
-    padding-left: 1rem;
+td, th {
+    vertical-align: middle;
 }
 </style>
 {% endblock %}
