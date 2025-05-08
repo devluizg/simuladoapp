@@ -63,6 +63,7 @@ class Questao(models.Model):
             raise ValidationError('O tamanho máximo da imagem é 5MB')
 
 class Simulado(models.Model):
+    gabaritos_gerados = models.JSONField(null=True, blank=True, help_text='Armazena as informações de embaralhamento após gerar o PDF')
     professor = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

@@ -64,6 +64,7 @@
     }
 
     /* Novo estilo para os placeholders */
+    #id_busca::placeholder,
     #id_disciplina::placeholder,
     #id_conteudo::placeholder,
     #id_nivel_dificuldade::placeholder {
@@ -72,6 +73,7 @@
     }
 
     /* Estilo para o texto digitado */
+    #id_busca,
     #id_disciplina,
     #id_conteudo,
     #id_nivel_dificuldade {
@@ -79,6 +81,7 @@
     }
 
     /* Estilo para quando o input está focado */
+    #id_busca:focus,
     #id_disciplina:focus,
     #id_conteudo:focus,
     #id_nivel_dificuldade:focus {
@@ -103,6 +106,10 @@
     <div class="card bg-dark text-light mb-4">
         <div class="card-body">
             <form method="get" class="row g-3">
+                <!-- Campo de busca textual -->
+                <div class="col-md-12 mb-3">
+                    {{ form.busca }}
+                </div>
                 <div class="col-md-4">
                     {{ form.disciplina }}
                 </div>
@@ -137,8 +144,9 @@
                                 {{ questao.get_nivel_dificuldade_display }}
                             </span>
                         </div>
-                        <div class="questao-preview" title="{{ questao.enunciado_preview|escape }}" data-bs-toggle="tooltip" data-bs-placement="top">
-                            {{ questao.enunciado_preview|safe|truncatechars_html:100 }}
+                        <!-- Modificação aqui -->
+                        <div class="questao-preview" title="{{ questao.enunciado|striptags|escape }}" data-bs-toggle="tooltip" data-bs-placement="top">
+                            {{ questao.enunciado|striptags|safe|truncatechars:100 }}
                         </div>                        
                     </div>
                     <div class="actions-wrapper">
@@ -165,7 +173,7 @@
             <ul class="pagination justify-content-center">
                 {% if questoes.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ questoes.previous_page_number }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Anterior</a>
+                        <a class="page-link" href="?page={{ questoes.previous_page_number }}{% if request.GET.busca %}&busca={{ request.GET.busca }}{% endif %}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Anterior</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled">
@@ -180,14 +188,14 @@
                         </li>
                     {% else %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ i }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">{{ i }}</a>
+                            <a class="page-link" href="?page={{ i }}{% if request.GET.busca %}&busca={{ request.GET.busca }}{% endif %}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">{{ i }}</a>
                         </li>
                     {% endif %}
                 {% endfor %}
 
                 {% if questoes.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ questoes.next_page_number }}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Próxima</a>
+                        <a class="page-link" href="?page={{ questoes.next_page_number }}{% if request.GET.busca %}&busca={{ request.GET.busca }}{% endif %}{% if request.GET.disciplina %}&disciplina={{ request.GET.disciplina }}{% endif %}{% if request.GET.conteudo %}&conteudo={{ request.GET.conteudo }}{% endif %}{% if request.GET.nivel_dificuldade %}&nivel_dificuldade={{ request.GET.nivel_dificuldade }}{% endif %}">Próxima</a>
                     </li>
                 {% else %}
                     <li class="page-item disabled">
@@ -293,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Adiciona classes do Bootstrap aos campos do formulário
     const formFields = [
+        '{{ form.busca.id_for_label }}',  // Adicionado o novo campo
         '{{ form.disciplina.id_for_label }}',
         '{{ form.conteudo.id_for_label }}',
         '{{ form.nivel_dificuldade.id_for_label }}'

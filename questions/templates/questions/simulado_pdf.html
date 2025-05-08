@@ -5,14 +5,17 @@
     {% load static %}
     {% load custom_filters %}
     <style>
+        /* Otimização: Pré-carregar fonte para evitar bloqueio de renderização */
         @font-face {
             font-family: '123Testing';
             src: url('{% static "questions/fonts/123Testing2.otf" %}?v=1') format('opentype'),
                  local('Arial');
             font-weight: normal;
             font-style: normal;
+            font-display: swap;
         }
 
+        /* Configurações de página otimizadas */
         @page {
             size: a4;
             margin: 1cm;
@@ -22,9 +25,13 @@
             font-family: Arial, sans-serif;
             font-size: 11px;
             line-height: 1.3;
+            margin: 0;
+            padding: 0;
+            /* Otimização: Desativar recursos CSS avançados para renderização mais rápida */
+            text-rendering: optimizeSpeed;
         }
 
-        /* Cabeçalho e Instruções */
+        /* Cabeçalho e Instruções - simplificados */
         .header-section {
             margin-bottom: 20px;
             border-bottom: 2px solid #000;
@@ -45,17 +52,20 @@
             background-color: #f9f9f9;
         }
 
-        /* Conteúdo das Questões */
+        /* Otimização: Uso de transform para ativar GPU acceleration */
         .content-wrapper {
             column-count: 2;
             column-gap: 20px;
             column-rule: 1px dashed #000;
             margin-bottom: 20px;
+            transform: translateZ(0);
         }
         
         .questao {
             break-inside: avoid;
             margin-bottom: 15px;
+            /* Otimização: Encapsular cada questão para isolamento de renderização */
+            contain: content;
         }
         
         .questao-numero {
@@ -74,17 +84,20 @@
             line-height: 1;
         }
         
+        /* Otimização: Simplificado para evitar excesso de computação de layout */
         .alternativa {
             margin-bottom: 0px;
             padding-bottom: 1px;
             text-align: justify;
-            display: flex;
-            align-items: center;
+            display: block; /* Mudança de flex para block para otimização */
+            min-height: 20px;
+            clear: both;
         }
 
+        /* Otimização: Transformado em elemento flutuante em vez de flex para melhor desempenho */
         .alternativa .item {
             font-family: '123Testing', Arial, sans-serif !important;
-            flex-shrink: 0;
+            float: left;
             margin-right: 10px;
             font-size: 10px;
             width: 16px;
@@ -93,19 +106,19 @@
             background-color: #000;
             color: #fff;
             border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            line-height: 16px;
         }
 
         .alternativa .conteudo {
-            flex: 1;
-            padding-top: 0;  
+            display: block;
+            margin-left: 26px; /* 16px do item + 10px de margem */
             line-height: 1.2;
         }
                 
+        /* Otimização: Limites explícitos para imagens */
         img {
             max-width: 100%;
+            max-height: 350px; /* Definir altura máxima */
             height: auto;
             display: block;
             margin: 8px auto;
@@ -116,7 +129,7 @@
             page-break-after: always;
         }
 
-        /* Novo estilo para o título do simulado */
+        /* Título do simulado */
         .simulado-titulo {
             text-align: center;
             font-size: 16px;
@@ -125,13 +138,27 @@
             border-bottom: 2px solid #000;
             padding-bottom: 10px;
         }
+        
+        /* Versão do simulado */
+        .simulado-versao {
+            position: absolute;
+            top: 1cm;
+            right: 1cm;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 3px 8px;
+            border: 1px solid #000;
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
-    {% for i in "12345" %}
     <div class="simulado-wrapper">
+        <!-- Marcador de versão -->
+        <div class="simulado-versao">VERSÃO {{ versao }}</div>
+    
         <!-- Título do Simulado -->
-        <div class="simulado-titulo">SIMULADO - VERSÃO {{ forloop.counter }}</div>
+        <div class="simulado-titulo">{{ simulado.titulo }}</div>
 
         <!-- Cabeçalho e Instruções -->
         <div class="header-section">
@@ -151,15 +178,19 @@
 
         <!-- Questões -->
         <div class="content-wrapper">
-            {% for questao in questoes|shuffle %}
+            {% for questao in questoes %}
             <div class="questao">
                 <div class="questao-numero">
                     QUESTÃO {{ forloop.counter|stringformat:"02d" }}
                 </div>
                 <div class="enunciado">
                     {{ questao.enunciado|safe }}
+                    {% if questao.imagem %}
+                    <img src="{{ questao.imagem.url }}" alt="Imagem da questão {{ forloop.counter }}">
+                    {% endif %}
                 </div>
                 <div class="alternativas">
+                    <!-- Ordem original das alternativas para todas as versões -->
                     <div class="alternativa"><span class="item">A</span><span class="conteudo">{{ questao.alternativa_a|safe }}</span></div>
                     <div class="alternativa"><span class="item">B</span><span class="conteudo">{{ questao.alternativa_b|safe }}</span></div>
                     <div class="alternativa"><span class="item">C</span><span class="conteudo">{{ questao.alternativa_c|safe }}</span></div>
@@ -170,6 +201,5 @@
             {% endfor %}
         </div>
     </div>
-    {% endfor %}
 </body>
 </html>

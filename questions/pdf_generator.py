@@ -1,3 +1,4 @@
+#pdf_generator.py
 from xhtml2pdf import pisa
 from django.template.loader import get_template
 from django.http import HttpResponse
@@ -76,13 +77,16 @@ def gerar_cartao_resposta_pdf(dir_path, caderno, tipo, num_questoes):
     # Determina o número de colunas: 1 coluna para até 23 questões, 2 colunas para 24-45 questões
     num_colunas = 1 if num_questoes <= 23 else 2
     
-    # Distribuição proporcional das questões entre as colunas
+    # Distribuição das questões entre as colunas
     questoes_por_coluna = []
     if num_colunas == 1:
         questoes_por_coluna = [num_questoes]
     else:
-        # Distribuição proporcional para 2 colunas
-        questoes_por_coluna = [num_questoes // 2, num_questoes - (num_questoes // 2)]
+        # MODIFICAÇÃO: Se número de questões for ímpar, coloca uma questão a mais na primeira coluna
+        if num_questoes % 2 == 0:  # Se for par
+            questoes_por_coluna = [num_questoes // 2, num_questoes // 2]
+        else:  # Se for ímpar
+            questoes_por_coluna = [(num_questoes // 2) + 1, num_questoes // 2]
     
     # Dimensões básicas
     margem_superior = 50 * mm

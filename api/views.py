@@ -158,15 +158,83 @@ class SimuladoViewSet(viewsets.ReadOnlyModelViewSet):
     def gabarito(self, request, pk=None):
         """Retorna o gabarito de um simulado específico"""
         simulado = self.get_object()
-        questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
         
-        gabarito = {}
-        for item in questoes_simulado:
-            gabarito[str(item.ordem)] = item.questao.resposta_correta
+        # Obter a versão do simulado do parâmetro da URL
+        versao_param = request.query_params.get('versao', 'versao1')  # Valor padrão 'versao1'
+        tipo_prova = request.query_params.get('tipo', '1')  # Valor padrão '1'
+        
+        # Mapear o parâmetro 'versao' para o índice correto (versao1 -> 0, versao2 -> 1, etc.)
+        versao_index = int(tipo_prova) - 1  # Usando o tipo_prova como índice da versão (1-based -> 0-based)
+        if versao_index < 0 or versao_index > 4:  # Limitar a 5 versões (0-4)
+            versao_index = 0
+        
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"====== SOLICITAÇÃO DE GABARITO ======")
+        logger.info(f"SIMULADO SOLICITADO - ID: {simulado.id}, TÍTULO: {simulado.titulo}")
+        logger.info(f"PARÂMETROS RECEBIDOS - Versão solicitada: {versao_param}, Tipo/Índice: {tipo_prova} -> {versao_index}")
+        
+        try:
+            # Se o simulado tem gabaritos gerados, use-os diretamente
+            if simulado.gabaritos_gerados:
+                import json
+                
+                # Obter as versões do simulado
+                versoes = simulado.gabaritos_gerados
+                logger.info(f"VERSÕES DISPONÍVEIS: {len(versoes)} versões")
+                
+                # Verificar se o índice da versão é válido
+                if versao_index < len(versoes):
+                    versao_escolhida = versoes[versao_index]
+                    logger.info(f"VERSÃO ENCONTRADA: {versao_index+1} (índice {versao_index})")
+                    
+                    # No modelo simplificado, extraímos diretamente o gabarito da versão escolhida
+                    gabarito_raw = versao_escolhida.get('gabarito', {})
+                    
+                    # Simplificar o gabarito para ter apenas número da questão -> resposta (usando tipo1 como fonte)
+                    gabarito = {}
+                    for ordem, respostas in gabarito_raw.items():
+                        # Sempre usar o 'tipo1' como resposta (ignoramos outros tipos)
+                        gabarito[ordem] = respostas.get('tipo1', '')
+                    
+                    logger.info(f"GABARITO FINAL ESCOLHIDO (Versão {versao_index+1}): {gabarito}")
+                else:
+                    # Se o índice estiver fora do intervalo, usar a primeira versão disponível
+                    logger.warning(f"ÍNDICE DE VERSÃO {versao_index} FORA DO INTERVALO, USANDO VERSÃO 1")
+                    versao_escolhida = versoes[0]
+                    gabarito_raw = versao_escolhida.get('gabarito', {})
+                    
+                    gabarito = {}
+                    for ordem, respostas in gabarito_raw.items():
+                        gabarito[ordem] = respostas.get('tipo1', '')
+                        
+                    logger.warning(f"GABARITO ALTERNATIVO USADO: {gabarito}")
+            else:
+                # Se não houver gabaritos gerados, use o método antigo
+                logger.warning(f"SIMULADO NÃO TEM GABARITOS GERADOS")
+                questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
+                gabarito = {str(item.ordem): item.questao.resposta_correta for item in questoes_simulado}
+                logger.warning(f"USANDO GABARITO PADRÃO (MÉTODO ANTIGO): {gabarito}")
+        
+        except Exception as e:
+            logger.error(f"ERRO AO RECUPERAR GABARITO: {str(e)}")
+            import traceback
+            logger.error(f"TRACEBACK: {traceback.format_exc()}")
             
+            # Fallback em caso de erro
+            questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
+            gabarito = {str(item.ordem): item.questao.resposta_correta for item in questoes_simulado}
+            logger.warning(f"USANDO GABARITO DE FALLBACK DEVIDO A ERRO: {gabarito}")
+        
+        # Log final do gabarito que será enviado
+        logger.info(f"GABARITO FINAL ENVIADO PARA O APP: {gabarito}")
+        logger.info(f"========== FIM DA SOLICITAÇÃO ==========")
+        
         return Response({
             'simulado_id': simulado.id,
             'titulo': simulado.titulo,
+            'versao': f"versao{tipo_prova}",  # Mantém compatibilidade com o parâmetro original
+            'tipo_prova': tipo_prova,
             'gabarito': gabarito
         })
 
@@ -176,46 +244,143 @@ class SimuladoViewSet(viewsets.ReadOnlyModelViewSet):
         simulado = self.get_object()
         serializer = CartaoRespostaSerializer(data=request.data)
         
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"====== INÍCIO DE CORREÇÃO DE SIMULADO ======")
+        
         if serializer.is_valid():
             aluno_id = serializer.validated_data['aluno_id']
             respostas = serializer.validated_data['respostas']
+            # Obter versão e tipo de prova dos parâmetros
+            versao = request.data.get('versao', 'versao1')
+            tipo_prova = request.data.get('tipo_prova', '1')
+            
+            logger.info(f"CORREÇÃO DE SIMULADO - ID: {simulado.id}, TÍTULO: {simulado.titulo}")
+            logger.info(f"PARÂMETROS RECEBIDOS - Aluno: {aluno_id}, Versão: {versao}, Tipo: {tipo_prova}")
+            logger.info(f"RESPOSTAS RECEBIDAS DO ALUNO: {respostas}")
             
             try:
                 aluno = Student.objects.get(id=aluno_id)
+                logger.info(f"ALUNO ENCONTRADO: ID={aluno.id}, NOME={aluno.name}")
             except Student.DoesNotExist:
+                logger.error(f"ALUNO NÃO ENCONTRADO: ID={aluno_id}")
                 return Response({'error': 'Aluno não encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
             # Lógica de correção
-            resultado = self.processar_correcao(simulado, aluno, respostas)
+            resultado = self.processar_correcao(simulado, aluno, respostas, versao=versao, tipo_prova=tipo_prova)
+            logger.info(f"CORREÇÃO FINALIZADA")
+            logger.info(f"========== FIM DA CORREÇÃO ==========")
             
             return Response(resultado)
         else:
+            logger.error(f"DADOS INVÁLIDOS: {serializer.errors}")
+            logger.info(f"========== FIM DA CORREÇÃO COM ERRO ==========")
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def processar_correcao(self, simulado, aluno, respostas):
+    def processar_correcao(self, simulado, aluno, respostas, versao='versao1', tipo_prova='1'):
         """Processa a correção do simulado e salva os resultados"""
-        # Obter o gabarito do simulado
-        questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
-        gabarito = {str(item.ordem): item.questao.resposta_correta for item in questoes_simulado}
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Mapear o parâmetro 'tipo_prova' para o índice correto (1 -> 0, 2 -> 1, etc.)
+        versao_index = int(tipo_prova) - 1  # Usando o tipo_prova como índice da versão
+        if versao_index < 0 or versao_index > 4:  # Limitar a 5 versões (0-4)
+            versao_index = 0
+        
+        logger.info(f"====== PROCESSANDO CORREÇÃO ======")
+        logger.info(f"SIMULADO: ID={simulado.id}, TÍTULO={simulado.titulo}")
+        logger.info(f"ALUNO: ID={aluno.id}, NOME={aluno.name}")
+        logger.info(f"VERSÃO SOLICITADA: {versao}, TIPO/ÍNDICE: {tipo_prova} -> {versao_index}")
+        
+        # Obter o gabarito correto para a versão especificada
+        import json
+        
+        try:
+            # Se o simulado tem gabaritos gerados, use-os diretamente
+            if simulado.gabaritos_gerados:
+                versoes = simulado.gabaritos_gerados
+                logger.info(f"VERSÕES DISPONÍVEIS: {len(versoes)} versões")
+                
+                # Verificar se o índice da versão é válido
+                if versao_index < len(versoes):
+                    versao_escolhida = versoes[versao_index]
+                    logger.info(f"VERSÃO ENCONTRADA: {versao_index+1} (índice {versao_index})")
+                    
+                    # No modelo simplificado, extraímos diretamente o gabarito da versão escolhida
+                    gabarito_raw = versao_escolhida.get('gabarito', {})
+                    
+                    # Simplificar o gabarito para ter apenas número da questão -> resposta
+                    gabarito = {}
+                    for ordem, respostas_tipo in gabarito_raw.items():
+                        # Sempre usar o 'tipo1' como resposta (ignoramos outros tipos)
+                        gabarito[ordem] = respostas_tipo.get('tipo1', '')
+                    
+                    logger.info(f"GABARITO USADO PARA CORREÇÃO (Versão {versao_index+1}): {gabarito}")
+                else:
+                    # Se o índice estiver fora do intervalo, usar a primeira versão disponível
+                    logger.warning(f"ÍNDICE DE VERSÃO {versao_index} FORA DO INTERVALO, USANDO VERSÃO 1")
+                    versao_escolhida = versoes[0]
+                    gabarito_raw = versao_escolhida.get('gabarito', {})
+                    
+                    gabarito = {}
+                    for ordem, respostas_tipo in gabarito_raw.items():
+                        gabarito[ordem] = respostas_tipo.get('tipo1', '')
+                    
+                    logger.warning(f"GABARITO ALTERNATIVO USADO: {gabarito}")
+            else:
+                # Se não houver gabaritos gerados, use o método antigo
+                logger.warning(f"SIMULADO NÃO TEM GABARITOS GERADOS")
+                questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
+                gabarito = {str(item.ordem): item.questao.resposta_correta for item in questoes_simulado}
+                logger.warning(f"USANDO GABARITO PADRÃO (MÉTODO ANTIGO): {gabarito}")
+        except Exception as e:
+            logger.error(f"ERRO AO RECUPERAR GABARITO: {str(e)}")
+            import traceback
+            logger.error(f"TRACEBACK: {traceback.format_exc()}")
+            
+            # Fallback em caso de erro
+            questoes_simulado = QuestaoSimulado.objects.filter(simulado=simulado).order_by('ordem')
+            gabarito = {str(item.ordem): item.questao.resposta_correta for item in questoes_simulado}
+            logger.warning(f"USANDO GABARITO DE FALLBACK DEVIDO A ERRO: {gabarito}")
         
         # Calcular pontuação e detalhes
         total_questoes = len(gabarito)
         acertos = 0
         detalhes = []
         
+        logger.info(f"====== COMPARANDO RESPOSTAS DO ALUNO COM GABARITO ======")
+        logger.info(f"RESPOSTAS DO ALUNO: {respostas}")
+        logger.info(f"GABARITO PARA COMPARAÇÃO: {gabarito}")
+        
         for ordem, resposta_aluno in respostas.items():
-            questao_simulado = get_object_or_404(QuestaoSimulado, simulado=simulado, ordem=int(ordem))
-            questao = questao_simulado.questao
             resposta_correta = gabarito.get(ordem)
+            if resposta_correta is None:
+                logger.warning(f"⚠️ Questão {ordem} não encontrada no gabarito!")
+                continue
+                
             acertou = resposta_aluno == resposta_correta
+            
+            # Log detalhado para depuração
+            logger.info(f"Questão {ordem}: Aluno={resposta_aluno}, Correta={resposta_correta}, Acertou={acertou}")
             
             if acertou:
                 acertos += 1
                 
+            # Obter dados da questão
+            try:
+                questao_simulado = QuestaoSimulado.objects.get(simulado=simulado, ordem=int(ordem))
+                questao = questao_simulado.questao
+                disciplina = questao.disciplina
+                logger.info(f"Questão {ordem}: ID={questao.id}, Disciplina={disciplina}")
+            except QuestaoSimulado.DoesNotExist:
+                logger.error(f"⚠️ QuestaoSimulado não encontrada para ordem {ordem}")
+                disciplina = "Não identificada"
+                questao = None
+                
             detalhes.append({
                 'ordem': ordem,
-                'questao_id': questao.id,
-                'disciplina': questao.disciplina,
+                'questao_id': questao.id if questao else None,
+                'disciplina': disciplina,
                 'resposta_aluno': resposta_aluno,
                 'resposta_correta': resposta_correta,
                 'acertou': acertou
@@ -223,38 +388,66 @@ class SimuladoViewSet(viewsets.ReadOnlyModelViewSet):
             
         pontuacao = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
         
+        logger.info(f"====== RESULTADO FINAL ======")
+        logger.info(f"ACERTOS: {acertos}/{total_questoes}, PONTUAÇÃO: {pontuacao}%")
+        
         # Salvar o resultado no banco
-        resultado = Resultado.objects.create(
-            aluno=aluno,
-            simulado=simulado,
-            pontuacao=pontuacao,
-            total_questoes=total_questoes,
-            acertos=acertos,
-            data_correcao=timezone.now()
-        )
-        
-        # Salvar detalhes de cada resposta
-        for detalhe in detalhes:
-            questao = Questao.objects.get(id=detalhe['questao_id'])
-            DetalhesResposta.objects.create(
-                resultado=resultado,
-                questao=questao,
-                ordem=detalhe['ordem'],
-                resposta_aluno=detalhe['resposta_aluno'],
-                resposta_correta=detalhe['resposta_correta'],
-                acertou=detalhe['acertou']
+        try:
+            resultado = Resultado.objects.create(
+                aluno=aluno,
+                simulado=simulado,
+                pontuacao=pontuacao,
+                total_questoes=total_questoes,
+                acertos=acertos,
+                data_correcao=timezone.now()
             )
+            # Tentar salvar versão e tipo se o modelo suportar esses campos
+            if hasattr(Resultado, 'versao'):
+                resultado.versao = versao
+            if hasattr(Resultado, 'tipo_prova'):
+                resultado.tipo_prova = tipo_prova
+            resultado.save()
+            
+            logger.info(f"RESULTADO SALVO NO BANCO. ID={resultado.id}")
+            
+            # Salvar detalhes de cada resposta
+            for detalhe in detalhes:
+                if detalhe['questao_id']:
+                    try:
+                        questao = Questao.objects.get(id=detalhe['questao_id'])
+                        DetalhesResposta.objects.create(
+                            resultado=resultado,
+                            questao=questao,
+                            ordem=detalhe['ordem'],
+                            resposta_aluno=detalhe['resposta_aluno'],
+                            resposta_correta=detalhe['resposta_correta'],
+                            acertou=detalhe['acertou']
+                        )
+                        logger.info(f"Detalhe salvo para questão {detalhe['ordem']}")
+                    except Exception as e:
+                        logger.error(f"Erro ao salvar detalhe da questão {detalhe['ordem']}: {str(e)}")
+        except Exception as e:
+            logger.error(f"ERRO AO SALVAR RESULTADO: {str(e)}")
+            import traceback
+            logger.error(f"TRACEBACK: {traceback.format_exc()}")
         
-        return {
-            'id': resultado.id,
+        # Montando o objeto de retorno com os resultados
+        resultado_final = {
+            'id': resultado.id if 'resultado' in locals() else None,
             'aluno': aluno.name,
             'simulado': simulado.titulo,
+            'versao': versao,
+            'tipo_prova': tipo_prova,
             'pontuacao': pontuacao,
             'acertos': acertos,
             'total_questoes': total_questoes,
-            'data_correcao': resultado.data_correcao,
+            'data_correcao': resultado.data_correcao if 'resultado' in locals() else timezone.now(),
             'detalhes': detalhes
         }
+        
+        logger.info(f"====== FIM DO PROCESSAMENTO DE CORREÇÃO ======")
+        
+        return resultado_final
 
 class CustomAuthToken(ObtainAuthToken):
     """

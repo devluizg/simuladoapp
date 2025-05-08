@@ -80,6 +80,10 @@ class SimuladoForm(forms.ModelForm):
         return cleaned_data
 
 class QuestaoFilterForm(forms.Form):
+    busca = forms.CharField(required=False, widget=forms.TextInput(attrs={
+        'class': 'form-control bg-dark text-light',
+        'placeholder': 'Buscar questões...'
+    }))
     disciplina = forms.CharField(required=False, widget=forms.TextInput(attrs={
         'class': 'form-control bg-dark text-light',
         'placeholder': 'Filtrar por disciplina'

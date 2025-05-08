@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load custom_filters %}
 
 {% block content %}
 <div class="container mt-4">
@@ -8,145 +9,45 @@
             <span class="badge bg-primary">{{ simulado.questoes.count }} questões</span>
         </div>
         <div class="card-body">
-            {% if simulado.questoes.all %}
+            {% if simulado.gabaritos_gerados %}
                 <div class="table-responsive">
                     <table class="table table-dark table-striped table-hover">
                         <thead>
                             <tr>
                                 <th scope="col">Questão</th>
-                                <th scope="col">Tipo 1</th>
-                                <th scope="col">Tipo 2</th>
-                                <th scope="col">Tipo 3</th>
-                                <th scope="col">Tipo 4</th>
-                                <th scope="col">Tipo 5</th>
+                                <th scope="col">Versão 1</th>
+                                <th scope="col">Versão 2</th>
+                                <th scope="col">Versão 3</th>
+                                <th scope="col">Versão 4</th>
+                                <th scope="col">Versão 5</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for questao in questoes %}
+                            {% for questao_idx in versoes.0.gabarito.keys %}
                             <tr>
-                                <td>{{ forloop.counter }}</td>
-                                <!-- Tipo 1: Gabarito original -->
-                                <td class="text-center">{{ questao.resposta_correta|upper }}</td>
-                                <!-- Tipo 2: Embaralhamento ABCDE → EABCD -->
-                                <td class="text-center">
-                                    {% if questao.resposta_correta == 'A' %}E{% endif %}
-                                    {% if questao.resposta_correta == 'B' %}A{% endif %}
-                                    {% if questao.resposta_correta == 'C' %}B{% endif %}
-                                    {% if questao.resposta_correta == 'D' %}C{% endif %}
-                                    {% if questao.resposta_correta == 'E' %}D{% endif %}
-                                </td>
-                                <!-- Tipo 3: Embaralhamento ABCDE → DEABC -->
-                                <td class="text-center">
-                                    {% if questao.resposta_correta == 'A' %}D{% endif %}
-                                    {% if questao.resposta_correta == 'B' %}E{% endif %}
-                                    {% if questao.resposta_correta == 'C' %}A{% endif %}
-                                    {% if questao.resposta_correta == 'D' %}B{% endif %}
-                                    {% if questao.resposta_correta == 'E' %}C{% endif %}
-                                </td>
-                                <!-- Tipo 4: Embaralhamento ABCDE → CDEAB -->
-                                <td class="text-center">
-                                    {% if questao.resposta_correta == 'A' %}C{% endif %}
-                                    {% if questao.resposta_correta == 'B' %}D{% endif %}
-                                    {% if questao.resposta_correta == 'C' %}E{% endif %}
-                                    {% if questao.resposta_correta == 'D' %}A{% endif %}
-                                    {% if questao.resposta_correta == 'E' %}B{% endif %}
-                                </td>
-                                <!-- Tipo 5: Embaralhamento ABCDE → BCDEA -->
-                                <td class="text-center">
-                                    {% if questao.resposta_correta == 'A' %}B{% endif %}
-                                    {% if questao.resposta_correta == 'B' %}C{% endif %}
-                                    {% if questao.resposta_correta == 'C' %}D{% endif %}
-                                    {% if questao.resposta_correta == 'D' %}E{% endif %}
-                                    {% if questao.resposta_correta == 'E' %}A{% endif %}
-                                </td>
+                                <td>{{ questao_idx }}</td>
+                                <td class="text-center">{{ versoes.0.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
+                                <td class="text-center">{{ versoes.1.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
+                                <td class="text-center">{{ versoes.2.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
+                                <td class="text-center">{{ versoes.3.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
+                                <td class="text-center">{{ versoes.4.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                 </div>
-                
-                <div class="mt-4">
-                    <h4>Legenda de Embaralhamento</h4>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card bg-secondary mb-3">
-                                <div class="card-header">Como interpretar este gabarito</div>
-                                <div class="card-body">
-                                    <p>Este gabarito mostra as respostas corretas para cada versão do simulado:</p>
-                                    <ul>
-                                        <li><strong>Tipo 1:</strong> Questões na ordem original</li>
-                                        <li><strong>Tipo 2-5:</strong> Questões com alternativas embaralhadas</li>
-                                    </ul>
-                                    <p>Cada letra (A, B, C, D, E) corresponde à alternativa correta na respectiva versão do simulado.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card bg-secondary">
-                                <div class="card-header">Correspondência nas Versões</div>
-                                <div class="card-body">
-                                    <table class="table table-sm table-dark">
-                                        <thead>
-                                            <tr>
-                                                <th>Original</th>
-                                                <th>Tipo 1</th>
-                                                <th>Tipo 2</th>
-                                                <th>Tipo 3</th>
-                                                <th>Tipo 4</th>
-                                                <th>Tipo 5</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>A</td>
-                                                <td>A</td>
-                                                <td>E</td>
-                                                <td>D</td>
-                                                <td>C</td>
-                                                <td>B</td>
-                                            </tr>
-                                            <tr>
-                                                <td>B</td>
-                                                <td>B</td>
-                                                <td>A</td>
-                                                <td>E</td>
-                                                <td>D</td>
-                                                <td>C</td>
-                                            </tr>
-                                            <tr>
-                                                <td>C</td>
-                                                <td>C</td>
-                                                <td>B</td>
-                                                <td>A</td>
-                                                <td>E</td>
-                                                <td>D</td>
-                                            </tr>
-                                            <tr>
-                                                <td>D</td>
-                                                <td>D</td>
-                                                <td>C</td>
-                                                <td>B</td>
-                                                <td>A</td>
-                                                <td>E</td>
-                                            </tr>
-                                            <tr>
-                                                <td>E</td>
-                                                <td>E</td>
-                                                <td>D</td>
-                                                <td>C</td>
-                                                <td>B</td>
-                                                <td>A</td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             {% else %}
-                <div class="alert alert-info">
-                    Nenhuma questão adicionada a este simulado.
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Atenção!</strong> O gabarito oficial ainda não foi gerado. 
+                    Por favor, clique no botão "Gerar PDF" para criar as versões do simulado
+                    e gerar o gabarito oficial. Somente após a geração do PDF, o gabarito
+                    correto estará disponível nesta página e poderá ser usado pelo aplicativo mobile.
+                </div>
+                <div class="text-center mt-4">
+                    <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-file-pdf me-2"></i> Gerar PDF e Gabarito Oficial
+                    </a>
                 </div>
             {% endif %}
         </div>
@@ -159,7 +60,7 @@
                     <i class="bi bi-arrow-left"></i> Voltar
                 </a>
                 <a href="{% url 'questions:gerar_pdf' simulado.id %}" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-file-pdf"></i> PDF
+                    <i class="bi bi-file-pdf"></i> {% if simulado.gabaritos_gerados %}Regenerar PDF{% else %}Gerar PDF{% endif %}
                 </a>
             </div>
         </div>
@@ -178,6 +79,14 @@ body {
 }
 td, th {
     vertical-align: middle;
+}
+.nav-tabs .nav-link {
+    color: #f8f9fa;
+}
+.nav-tabs .nav-link.active {
+    background-color: #343a40;
+    color: #fff;
+    border-color: #495057;
 }
 </style>
 {% endblock %}
