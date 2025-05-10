@@ -3,112 +3,246 @@
 {% block title %}Alunos da Turma {{ class.name }}{% endblock %}
 
 {% block content %}
-<div class="card bg-dark text-light">
-    <div class="card-header">
-        <h1>Alunos da Turma: {{ class.name }}</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Alunos da Turma {{ class.name }}</h1>
+        <div>
+            <a href="{% url 'class_list' %}" class="btn btn-primary">
+                Voltar para Turmas
+            </a>
+            <a href="{% url 'student_form' %}?class_pk={{ class.id }}" class="btn btn-success">
+                Adicionar Aluno
+            </a>
+            <a href="{% url 'import_students' %}?class_id={{ class.id }}" class="btn btn-success">
+                Importar Alunos
+            </a>
+        </div>
     </div>
-    <div class="card-body">
-        {% if students %}
-            <table class="table table-dark table-striped">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>Email</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for student in students %}
-                    <tr>
-                        <td>{{ student.student_id }}</td>
-                        <td>{{ student.name }}</td>
-                        <td>{{ student.email }}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editStudentModal{{ student.student_id }}">
-                                Editar
-                            </button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
 
-            {% for student in students %}
-            <!-- Modal para edição de cada aluno -->
-            <div class="modal fade" id="editStudentModal{{ student.student_id }}" tabindex="-1" 
-                 aria-labelledby="editStudentModalLabel{{ student.student_id }}" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content bg-dark text-light">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="editStudentModalLabel{{ student.student_id }}">Editar Aluno</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="row mb-4">
+        <!-- Card com número de alunos -->
+        <div class="col-md-3" style="max-width: 200px;">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body py-3">
+                    <h1 class="display-4 mb-0">{{ students.count }}</h1>
+                    <p class="mb-0">Alunos na Turma</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Informações da turma -->
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title mb-1 text-white">Informações da Turma</h5>
+                            <p class="text-white mb-0">{{ class.description|default:"Sem descrição" }}</p>
                         </div>
-                        <form method="post" action="{% url 'student_edit' student.student_id %}">
-                            {% csrf_token %}
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label for="name{{ student.student_id }}" class="form-label">Nome</label>
-                                    <input type="text" class="form-control" 
-                                           id="name{{ student.student_id }}" 
-                                           name="name" 
-                                           value="{{ student.name }}">
-                                </div>
-                                <div class="mb-3">
-                                    <label for="email{{ student.student_id }}" class="form-label">Email</label>
-                                    <input type="email" class="form-control" 
-                                           id="email{{ student.student_id }}" 
-                                           name="email" 
-                                           value="{{ student.email }}">
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                            </div>
-                        </form>
+                        <div>
+                            <a href="{% url 'class_edit' class.id %}" class="btn btn-warning btn-sm">
+                                Editar Turma
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
-            {% endfor %}
-
-        {% else %}
-            <p class="text-center">Nenhum aluno cadastrado nesta turma.</p>
-        {% endif %}
+        </div>
     </div>
-    <div class="card-footer">
-        <div class="d-flex justify-content-between">
-            <a href="{% url 'class_list' %}" class="btn btn-primary">Voltar para Lista de Turmas</a>
-            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#importStudentsModal">
-                Importar Alunos
-            </button>
+
+    <!-- Lista de Alunos -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Lista de Alunos</h5>
+                <div class="input-group" style="max-width: 300px;">
+                    <input type="text" id="searchStudent" class="form-control bg-dark text-white border-secondary" placeholder="Buscar aluno...">
+                    <button class="btn btn-outline-light" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            {% if students %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-striped mb-0" id="studentTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in students %}
+                            <tr>
+                                <td>{{ student.student_id }}</td>
+                                <td class="text-white fw-bold">
+                                    {{ student.name }}
+                                </td>
+                                <td>{{ student.email|default:"--" }}</td>
+                                <td>
+                                    <div class="d-flex">
+                                        <a href="{% url 'student_dashboard' student.id %}" class="btn btn-primary btn-sm me-1">
+                                            Dashboard
+                                        </a>
+                                        <a href="#" class="btn btn-primary btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editStudentModal{{ student.id }}">
+                                            Editar
+                                        </a>
+                                        <form method="post" action="{% url 'class_remove_student' class.id student.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja remover este aluno da turma?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                Excluir
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center my-5">
+                    <div class="mb-3">
+                        <i class="fas fa-users fa-3x text-muted"></i>
+                    </div>
+                    <h5 class="text-muted">Nenhum aluno cadastrado nesta turma</h5>
+                    <p class="text-muted mb-4">Adicione alunos individualmente ou importe vários de uma vez.</p>
+                    <div>
+                        <a href="{% url 'student_form' %}?class_pk={{ class.id }}" class="btn btn-primary me-2">
+                            Adicionar Aluno
+                        </a>
+                        <a href="{% url 'import_students' %}?class_id={{ class.id }}" class="btn btn-success">
+                            Importar Alunos
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Modal de Importação -->
-<div class="modal fade" id="importStudentsModal" tabindex="-1" aria-labelledby="importStudentsModalLabel" aria-hidden="true">
+<!-- Modais para Edição de Alunos -->
+{% for student in students %}
+<div class="modal fade" id="editStudentModal{{ student.id }}" tabindex="-1" 
+     aria-labelledby="editStudentModalLabel{{ student.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content bg-dark text-light">
             <div class="modal-header">
-                <h5 class="modal-title" id="importStudentsModalLabel">Importar Alunos</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="editStudentModalLabel{{ student.id }}">
+                    Editar Aluno
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="post" action="{% url 'import_students' %}" enctype="multipart/form-data">
+            <form method="post" action="{% url 'student_edit' student.id %}">
                 {% csrf_token %}
-                <input type="hidden" name="class_id" value="{{ class.id }}">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="file" class="form-label">Arquivo Excel ou PDF</label>
-                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls,.pdf" required>
+                        <label for="name{{ student.id }}" class="form-label">Nome</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               id="name{{ student.id }}" 
+                               name="name" 
+                               value="{{ student.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="student_id{{ student.id }}" class="form-label">ID / Matrícula</label>
+                        <input type="text" class="form-control bg-dark text-white border-secondary" 
+                               id="student_id{{ student.id }}" 
+                               name="student_id" 
+                               value="{{ student.student_id }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email{{ student.id }}" class="form-label">Email</label>
+                        <input type="email" class="form-control bg-dark text-white border-secondary" 
+                               id="email{{ student.id }}" 
+                               name="email" 
+                               value="{{ student.email }}">
+                        <div class="form-text text-muted">O email é opcional.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-primary">Importar</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endfor %}
+
+<style>
+/* Estilo para cores e aparência consistentes */
+body {
+    background-color: #212529;
+    color: white;
+}
+
+.card {
+    background-color: #2c3034;
+    border-color: #373b3e;
+}
+
+.card-header {
+    background-color: #212529;
+    border-color: #373b3e;
+}
+
+.table-dark {
+    background-color: #212529;
+}
+
+.table-dark td, .table-dark th {
+    border-color: #373b3e;
+}
+
+/* Ajustes para o input de busca */
+#searchStudent::placeholder {
+    color: #adb5bd;
+}
+
+/* Botões consistentes */
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Ajuste para a caixa azul */
+.display-4 {
+    font-size: 2.5rem;
+}
+</style>
+
+<script>
+// Script para filtrar alunos na tabela
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchStudent');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const searchText = this.value.toLowerCase();
+            const table = document.getElementById('studentTable');
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const nameCell = rows[i].getElementsByTagName('td')[1];
+                if (nameCell) {
+                    const name = nameCell.textContent || nameCell.innerText;
+                    if (name.toLowerCase().indexOf(searchText) > -1) {
+                        rows[i].style.display = '';
+                    } else {
+                        rows[i].style.display = 'none';
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

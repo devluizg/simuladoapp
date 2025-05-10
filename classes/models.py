@@ -50,6 +50,7 @@ class StudentPerformance(models.Model):
     correct_answers = models.IntegerField(default=0, verbose_name="Respostas corretas")
     total_questions = models.IntegerField(default=0, verbose_name="Total de questões")
     date_taken = models.DateTimeField(auto_now_add=True, verbose_name="Data de realização")
+    versao = models.CharField(max_length=20, null=True, blank=True, verbose_name="Versão do simulado")
     
     class Meta:
         unique_together = ['student', 'simulado']

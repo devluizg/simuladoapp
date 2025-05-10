@@ -1,28 +1,208 @@
 {% extends 'base.html' %}
 
+{% block title %}Dashboard de {{ student.name }}{% endblock %}
+
 {% block content %}
-<h1>Dashboard de {{ student.name }}</h1>
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Dashboard de {{ student.name }}</h1>
+        <div>
+            <a href="{% url 'student_select_dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-users"></i> Selecionar Outro Aluno
+            </a>
+            <a href="{% url 'app_resultados' %}?aluno_id={{ student.id }}" class="btn btn-outline-info">
+                <i class="fas fa-list"></i> Ver Todos os Resultados
+            </a>
+        </div>
+    </div>
 
-<h2>Informações do Aluno</h2>
-<p>ID: {{ student.student_id }}</p>
-<p>Email: {{ student.email }}</p>
+    <!-- Estatísticas Rápidas -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total de Simulados</h5>
+                    <h1>{{ total_simulados }}</h1>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Média Geral</h5>
+                    <!-- Removido o símbolo de porcentagem -->
+                    <h1>{{ media_geral|floatformat:2 }}</h1>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Turmas</h5>
+                    <h1>{{ classes.count }}</h1>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h2>Turmas</h2>
-<ul>
-{% for class in classes %}
-    <li>{{ class.name }}</li>
-{% endfor %}
-</ul>
+    <!-- Simulados Recentes -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Simulados Recentes</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Simulado</th>
+                            <th>Nota</th>
+                            <th>Acertos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for simulado in simulados_recentes %}
+                        <tr>
+                            <td>{{ simulado.data|date:"d/m/Y H:i" }}</td>
+                            <td>{{ simulado.simulado }}</td>
+                            <!-- Removido o símbolo de porcentagem -->
+                            <td>{{ simulado.nota|floatformat:2 }}</td>
+                            <td>{{ simulado.acertos }}/{{ simulado.total }}</td>
+                            <td>
+                                <a href="{% url 'resultado_detalhes' simulado.fonte simulado.id %}" class="btn btn-sm btn-info">
+                                    Ver Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhum simulado realizado ainda.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-<h2>Estatísticas</h2>
-<p>Total de Simulados: {{ total_simulados }}</p>
-<p>Total de Questões: {{ total_questoes }}</p>
+    <!-- Gráfico de Progresso -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Progresso ao Longo do Tempo</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="progressChart" height="100"></canvas>
+        </div>
+    </div>
 
-<h2>Últimos Simulados</h2>
-<ul>
-{% for simulado in simulados %}
-    <li>{{ simulado.titulo }} - {{ simulado.data_criacao|date:"d/m/Y" }}</li>
-{% endfor %}
-</ul>
+    <!-- Lista Unificada de Todos os Simulados -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Histórico de Simulados</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Simulado</th> 
+                            <th>Nota</th>
+                            <th>Acertos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for simulado in todos_simulados %}
+                        <tr>
+                            <td>{{ simulado.data|date:"d/m/Y" }}</td>
+                            <td>{{ simulado.simulado }}</td>
+                            <!-- Removido o símbolo de porcentagem -->
+                            <td>{{ simulado.nota|floatformat:2 }}</td>
+                            <td>{{ simulado.acertos }}/{{ simulado.total }}</td>
+                            <td>
+                                <a href="{% url 'resultado_detalhes' simulado.fonte simulado.id %}" class="btn btn-sm btn-info">
+                                    Ver Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhum simulado realizado ainda.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Script para o gráfico -->
+<div id="chart-data" 
+    data-labels="{{ progresso_labels }}" 
+    data-values="{{ progresso_valores }}"
+    data-simulados="{{ progresso_simulados_json }}"
+    style="display:none;">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Obter dados do elemento escondido
+    var chartData = document.getElementById('chart-data');
+    var labelsString = chartData.getAttribute('data-labels');
+    var valuesString = chartData.getAttribute('data-values');
+    var simuladosString = chartData.getAttribute('data-simulados');
+    
+    // Converter strings em arrays
+    var labels = labelsString ? JSON.parse(labelsString) : [];
+    var values = valuesString ? JSON.parse(valuesString) : [];
+    var simuladosData = simuladosString ? JSON.parse(simuladosString) : [];
+    
+    // Configurar o gráfico
+    var ctx = document.getElementById('progressChart').getContext('2d');
+    
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Nota',  // Removido (%) do label
+                data: values,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 10  // Alterado de 100 para 10 assumindo que a escala é de 0-10
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Nota: ' + context.raw;  // Removido o % do tooltip
+                        },
+                        afterLabel: function(context) {
+                            var index = context.dataIndex;
+                            var info = simuladosData[index] || {};
+                            
+                            return 'Simulado: ' + (info.simulado || '');
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

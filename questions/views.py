@@ -52,7 +52,9 @@ def dashboard(request):
 
 def questao_list(request):
     form = QuestaoFilterForm(request.GET)
-    questoes = Questao.objects.all()
+    
+    # Filtrar apenas as questões do usuário atual
+    questoes = Questao.objects.filter(professor=request.user)
     
     if form.is_valid():
         # Filtrar por busca textual se o campo estiver presente
@@ -85,7 +87,7 @@ def questao_list(request):
     questoes = paginator.get_page(page)
     
     # Obter simulados do professor atual
-    simulados = Simulado.objects.filter(professor=request.user)  # <-- Mudança aqui de user para professor
+    simulados = Simulado.objects.filter(professor=request.user)
     
     context = {
         'questoes': questoes,

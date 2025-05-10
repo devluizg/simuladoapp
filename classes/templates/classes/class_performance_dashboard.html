@@ -1,0 +1,1098 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard da Turma {{ class.name }} - {{ simulado.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Dashboard da Turma: {{ class.name }}</h1>
+        <div>
+            <a href="{% url 'class_list' %}" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> Voltar para Turmas
+            </a>
+            <a href="{% url 'class_students' class.id %}" class="btn btn-primary">
+                <i class="fas fa-users"></i> Ver Alunos
+            </a>
+        </div>
+    </div>
+
+    <div class="alert alert-info mb-4">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-info-circle fa-2x"></i>
+            </div>
+            <div>
+                <h5 class="alert-heading mb-1">Simulado: {{ simulado.titulo }}</h5>
+                <p class="mb-0">Esta página mostra o desempenho geral da turma no simulado, além de estatísticas detalhadas por disciplina e assunto.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas gerais -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ total_participantes }}</h1>
+                    <p class="mb-0">Alunos Participantes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ media_turma|floatformat:1 }}</h1>
+                    <p class="mb-0">Média da Turma</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ total_alunos }}</h1>
+                    <p class="mb-0">Total de Alunos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <h1 class="display-4">{{ estatisticas_disciplinas|length }}</h1>
+                    <p class="mb-0">Disciplinas Avaliadas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Notas por Aluno</h5>
+                </div>
+                <div class="card-body">
+                    <div id="notasChart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Desempenho por Disciplina</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="disciplinasChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Distribuição de Notas</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="distribuicaoChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas por disciplina -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Desempenho por Disciplina</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Disciplina</th>
+                            <th>Acertos</th>
+                            <th>Total</th>
+                            <th>Percentual</th>
+                            <th>Desempenho</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disciplina in estatisticas_disciplinas %}
+                        <tr>
+                            <td class="text-white fw-bold">{{ disciplina.nome }}</td>
+                            <td>{{ disciplina.acertos }}</td>
+                            <td>{{ disciplina.total }}</td>
+                            <td>{{ disciplina.percentual|floatformat:1 }}%</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success disciplina-progress-bar" 
+                                        data-percent="{{ disciplina.percentual }}"
+                                        aria-valuenow="{{ disciplina.percentual }}" 
+                                        aria-valuemin="0" 
+                                        aria-valuemax="100">
+                                        {{ disciplina.percentual|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhuma disciplina encontrada</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas por assunto -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Desempenho por Assunto</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Assunto</th>
+                            <th>Acertos</th>
+                            <th>Total</th>
+                            <th>Percentual</th>
+                            <th>Desempenho</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assunto in estatisticas_assuntos %}
+                        <tr>
+                            <td class="text-white fw-bold">{{ assunto.nome }}</td>
+                            <td>{{ assunto.acertos }}</td>
+                            <td>{{ assunto.total }}</td>
+                            <td>{{ assunto.percentual|floatformat:1 }}%</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar bg-success assunto-progress-bar"
+                                        data-percent="{{ assunto.percentual }}"
+                                        aria-valuenow="{{ assunto.percentual }}" 
+                                        aria-valuemin="0" 
+                                        aria-valuemax="100">
+                                        {{ assunto.percentual|floatformat:1 }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">Nenhum assunto encontrado</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resultados individuais -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Resultados Individuais</h5>
+            <div class="input-group" style="max-width: 300px;">
+                <input type="text" id="searchAluno" class="form-control bg-dark text-white border-secondary" placeholder="Buscar aluno...">
+                <button class="btn btn-outline-light" type="button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped mb-0" id="alunosTable">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Nota</th>
+                            <th>Acertos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resultado in resultados %}
+                        <tr>
+                            <td class="text-white fw-bold">{{ resultado.aluno.name }}</td>
+                            <td>{{ resultado.nota|floatformat:2 }}</td>
+                            <td>{{ resultado.acertos }}/{{ resultado.total }}</td>
+                            <td>
+                                <a href="{% url 'student_dashboard' resultado.aluno.id %}" class="btn btn-primary btn-sm me-1">
+                                    Dashboard
+                                </a>
+                                <a href="{% url 'student_simulado_detail' resultado.aluno.id simulado.id %}" class="btn btn-info btn-sm">
+                                    Detalhes
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">Nenhum resultado encontrado</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilo para cores e aparência consistentes */
+body {
+    background-color: #212529;
+    color: white;
+}
+
+.card {
+    background-color: #2c3034;
+    border-color: #373b3e;
+}
+
+.card-header {
+    background-color: #212529;
+    border-color: #373b3e;
+}
+
+.table-dark {
+    background-color: #212529;
+}
+
+.table-dark td, .table-dark th {
+    border-color: #373b3e;
+}
+
+/* Ajustes para o input de busca */
+#searchAluno::placeholder {
+    color: #adb5bd;
+}
+
+/* Botões consistentes */
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Ajuste para a exibição de gráficos */
+canvas {
+    max-width: 100%;
+}
+
+/* Ajustes para barras de progresso */
+.progress {
+    background-color: #373b3e;
+}
+
+.progress-bar {
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.5);
+}
+
+/* Ajuste para estatísticas */
+.display-4 {
+    font-size: 2.5rem;
+}
+
+/* Estilos adicionais para Plotly no tema escuro */
+.js-plotly-plot .plotly {
+    background-color: transparent !important;
+}
+
+.js-plotly-plot .main-svg {
+    background-color: transparent !important;
+}
+
+.js-plotly-plot .svg-container {
+    background-color: transparent !important;
+}
+
+.js-plotly-plot .grid-layer path {
+    stroke: rgba(255, 255, 255, 0.1) !important;
+}
+
+.js-plotly-plot .xaxis .xtick text, 
+.js-plotly-plot .yaxis .ytick text {
+    fill: white !important;
+}
+
+.js-plotly-plot .xaxis .xtitle text, 
+.js-plotly-plot .yaxis .ytitle text {
+    fill: white !important;
+}
+
+.js-plotly-plot .legend text {
+    fill: white !important;
+}
+
+.js-plotly-plot .annotation-text {
+    fill: black !important;
+}
+
+/* Ajuste para a altura do gráfico Plotly */
+#notasChart {
+    width: 100%;
+    min-height: 400px;
+}
+</style>
+
+<!-- Scripts para gráficos -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Dados para gráficos -->
+<div id="chart-data" 
+    data-nomes='{{ nomes_alunos_json }}' 
+    data-notas='{{ notas_alunos_json }}'
+    data-disciplinas='{{ disciplinas_nomes_json }}'
+    data-percentuais='{{ disciplinas_percentuais_json }}'
+    style="display:none;"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM carregado, iniciando script");
+            
+            // Configurar as barras de progresso via JavaScript
+            document.querySelectorAll('.disciplina-progress-bar, .assunto-progress-bar').forEach(function(bar) {
+                const percent = bar.getAttribute('data-percent');
+                bar.style.width = percent + '%';
+            });
+            
+            // Obter dados para os gráficos
+            const chartData = document.getElementById('chart-data');
+            console.log("Elemento chartData:", chartData);
+            
+            if (!chartData) {
+                console.error("Elemento chart-data não encontrado!");
+                return;
+            }
+            
+            // Log dos atributos brutos para depuração
+            console.log("Atributos brutos:", {
+                nomes: chartData.getAttribute('data-nomes'),
+                notas: chartData.getAttribute('data-notas'),
+                disciplinas: chartData.getAttribute('data-disciplinas'),
+                percentuais: chartData.getAttribute('data-percentuais')
+            });
+            
+            // Usar dados fallback em caso de erro
+            let nomesAlunos, notasAlunos, disciplinasNomes, disciplinasPercentuais;
+            
+            try {
+                nomesAlunos = JSON.parse(chartData.getAttribute('data-nomes') || '[]');
+                notasAlunos = JSON.parse(chartData.getAttribute('data-notas') || '[]');
+                disciplinasNomes = JSON.parse(chartData.getAttribute('data-disciplinas') || '[]');
+                disciplinasPercentuais = JSON.parse(chartData.getAttribute('data-percentuais') || '[]');
+                
+                console.log("Parsing de JSON bem-sucedido");
+            } catch (e) {
+                console.error("Erro ao analisar JSON:", e);
+                
+                // Dados de fallback para teste
+                nomesAlunos = ["Aluno 1", "Aluno 2", "Aluno 3", "Aluno 4", "Aluno 5"];
+                notasAlunos = [8.5, 7.0, 6.2, 9.1, 5.4];
+                disciplinasNomes = ["Matemática", "Português", "Ciências"];
+                disciplinasPercentuais = [75, 60, 82];
+                
+                console.log("Usando dados de fallback para teste");
+            }
+            
+            // Verificar dados recebidos
+            console.log("Dados processados:", {
+                nomes: nomesAlunos,
+                notas: notasAlunos,
+                disciplinas: disciplinasNomes,
+                percentuais: disciplinasPercentuais
+            });
+        
+            // Se não há dados, mostrar mensagem de erro
+            if (nomesAlunos.length === 0 || notasAlunos.length === 0) {
+                document.getElementById('notasChart').innerHTML = 
+                    '<div class="alert alert-warning">Não há dados suficientes para exibir o gráfico.</div>';
+                console.warn("Sem dados para exibir gráfico");
+                return;
+            }
+            
+            // Ordenar alunos por notas (decrescente)
+            const alunosOrdenados = nomesAlunos.map((nome, index) => ({
+                nome: nome,
+                nota: notasAlunos[index]
+            })).sort((a, b) => b.nota - a.nota);
+            
+            const nomesOrdenados = alunosOrdenados.map(a => a.nome);
+            const notasOrdenadas = alunosOrdenados.map(a => a.nota);
+            
+            // Calcular estatísticas
+            const media = notasAlunos.reduce((a, b) => a + b, 0) / notasAlunos.length || 0;
+            
+            // Calcular desvio padrão
+            const desvio = Math.sqrt(
+                notasAlunos.map(x => Math.pow(x - media, 2)).reduce((a, b) => a + b, 0) / notasAlunos.length || 0
+            );
+            
+            // Classificar alunos
+            const classificacoes = notasOrdenadas.map(nota => {
+                if (nota >= media + desvio) return 'Muito Acima da Média';
+                else if (nota >= media + 0.5 * desvio) return 'Acima da Média';
+                else if (nota >= media - 0.5 * desvio) return 'Na Média';
+                else if (nota >= media - desvio) return 'Abaixo da Média';
+                else return 'Muito Abaixo da Média';
+            });
+            
+            // Cores para cada classificação
+            const coresMapa = {
+                'Muito Acima da Média': 'green',
+                'Acima da Média': 'lime',
+                'Na Média': 'gold',
+                'Abaixo da Média': 'lightblue',
+                'Muito Abaixo da Média': 'red'
+            };
+            
+            const cores = classificacoes.map(c => coresMapa[c]);
+            
+            // Primeiro tente uma abordagem mais simples para verificar se o gráfico básico funciona
+try {
+    // Abordagem simplificada para testar
+    const tracesSimples = [{
+        x: nomesOrdenados,
+        y: notasOrdenadas,
+        type: 'scatter',
+        mode: 'lines+markers+text',
+        marker: {
+            color: cores,
+            size: 12,
+            line: {
+                color: 'white',
+                width: 1
+            }
+        },
+        line: {
+            color: 'rgba(173, 216, 230, 0.7)',
+            width: 2
+        },
+        text: notasOrdenadas.map(n => n.toFixed(1)),
+        textposition: 'top center',
+        textfont: {
+            family: 'Arial, sans-serif',
+            size: 12,
+            color: 'white',
+            weight: 'bold'
+        },
+        hoverinfo: 'text',
+        hovertext: nomesOrdenados.map((nome, i) => 
+            `<b>${nome}</b><br>Nota: <b>${notasOrdenadas[i].toFixed(1)}</b><br>${classificacoes[i]}`
+        ),
+        hoverlabel: {
+            bgcolor: '#333',
+            bordercolor: '#999',
+            font: {
+                family: 'Arial',
+                size: 14,
+                color: 'white'
+            }
+        }
+    }];
+
+    const layoutSimples = {
+        title: {
+            text: 'Notas por Aluno',
+            font: {
+                color: 'white',
+                size: 18,
+                weight: 'bold'
+            },
+            x: 0.5,
+            y: 0.95
+        },
+        xaxis: {
+            title: {
+                text: 'Aluno',
+                font: {
+                    color: 'white',
+                    size: 14,
+                    weight: 'bold'
+                },
+                standoff: 20
+            },
+            tickangle: -45,
+            color: 'white',
+            type: 'category',
+            tickfont: {
+                size: 11,
+                color: 'rgba(255, 255, 255, 0.9)'
+            },
+            gridcolor: 'rgba(255, 255, 255, 0.1)'
+        },
+        yaxis: {
+            title: {
+                text: 'Nota',
+                font: {
+                    color: 'white',
+                    size: 14,
+                    weight: 'bold'
+                },
+                standoff: 20
+            },
+            range: [0, 10],
+            color: 'white',
+            tickfont: {
+                size: 12,
+                color: 'rgba(255, 255, 255, 0.9)'
+            },
+            gridcolor: 'rgba(255, 255, 255, 0.1)',
+            zerolinecolor: 'rgba(255, 255, 255, 0.3)'
+        },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: {color: 'white'},
+        margin: {
+            l: 60,
+            r: 50,
+            b: 120,
+            t: 60,
+            pad: 4
+        },
+        hovermode: 'closest',
+        showlegend: false
+    };
+
+    // Adicionar linha da média
+    layoutSimples.shapes = [{
+        type: 'line',
+        x0: -0.5,
+        x1: nomesOrdenados.length - 0.5,
+        y0: media,
+        y1: media,
+        line: {
+            color: 'rgba(255, 80, 80, 0.8)',
+            width: 2,
+            dash: 'dash'
+        }
+    }];
+    
+    // Adicionar anotação da média
+    layoutSimples.annotations = [{
+        x: 0,
+        y: media,
+        xref: 'x',
+        yref: 'y',
+        text: `Média: ${media.toFixed(2)}`,
+        showarrow: true,
+        arrowhead: 7,
+        arrowsize: 1,
+        arrowwidth: 2,
+        arrowcolor: 'red',
+        ax: 60,
+        ay: -30,
+        font: {
+            color: 'white',
+            size: 14,
+            weight: 'bold'
+        },
+        bgcolor: 'rgba(200, 0, 0, 0.7)',
+        bordercolor: 'red',
+        borderwidth: 2,
+        borderpad: 4,
+        opacity: 0.9
+    }];
+
+    console.log("Tentando renderizar gráfico simples:", {
+        traces: tracesSimples,
+        layout: layoutSimples
+    });
+    
+    // Configuração personalizada para o gráfico
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
+        toImageButtonOptions: {
+            format: 'png',
+            filename: 'notas_por_aluno',
+            height: 500,
+            width: 900,
+            scale: 2
+        }
+    };
+    
+    Plotly.newPlot('notasChart', tracesSimples, layoutSimples, config)
+        .then(() => {
+            console.log("Gráfico simples carregado com sucesso");
+            renderizarGraficoCompleto();
+        })
+        .catch(err => {
+            console.error("Erro ao renderizar gráfico simples:", err);
+            document.getElementById('notasChart').innerHTML = 
+                `<div class="alert alert-danger">
+                    Erro ao carregar o gráfico: ${err.message}
+                </div>`;
+        });
+} catch (e) {
+    console.error("Erro ao criar o gráfico simples:", e);
+    document.getElementById('notasChart').innerHTML = 
+        `<div class="alert alert-danger">
+            Erro ao carregar o gráfico: ${e.message}
+        </div>`;
+}
+
+function renderizarGraficoCompleto() {
+    try {
+        // Agrupar dados por classificação
+        const categorias = [...new Set(classificacoes)];
+        const traces = [];
+        
+        // Adicionar linha conectando todos os pontos
+        traces.push({
+            x: nomesOrdenados,
+            y: notasOrdenadas,
+            mode: 'lines',
+            line: {
+                color: 'rgba(173, 216, 230, 0.7)',
+                width: 2
+            },
+            name: 'Notas',
+            showlegend: false
+        });
+        
+        // Adicionar pontos por categoria
+categorias.forEach(categoria => {
+    const indices = classificacoes.map((c, i) => c === categoria ? i : -1).filter(i => i !== -1);
+    const nomes = indices.map(i => nomesOrdenados[i]);
+    const notas = indices.map(i => notasOrdenadas[i]);
+    
+    // Trace para visualização com texto e marcadores
+    traces.push({
+        x: nomes,
+        y: notas,
+        mode: 'markers+text',
+        text: notas.map(n => n.toFixed(1)),
+        textposition: 'top center',
+        textfont: {
+            family: 'Arial, sans-serif',
+            size: 12,
+            color: 'white',
+            weight: 'bold'
+        },
+        marker: {
+            color: coresMapa[categoria],
+            size: 12,
+            line: {
+                color: 'white',
+                width: 1
+            }
+        },
+        name: categoria,
+        showlegend: false, // Não mostrar na legenda
+        legendgroup: categoria,
+        hoverinfo: 'text',
+        hovertext: nomes.map((nome, i) => 
+            `<b>${nome}</b><br>Nota: <b>${notas[i].toFixed(1)}</b><br>${categoria}`
+        ),
+        hoverlabel: {
+            bgcolor: '#333',
+            bordercolor: '#999',
+            font: {
+                family: 'Arial',
+                size: 14,
+                color: 'white'
+            }
+        }
+    });
+    
+    // Trace apenas para a legenda - sem texto, só marcador
+    traces.push({
+        x: [null],
+        y: [null],
+        mode: 'markers',
+        marker: {
+            color: coresMapa[categoria],
+            size: 12,
+            line: {
+                color: 'white',
+                width: 1
+            }
+        },
+        legendgroup: categoria,
+        name: categoria,
+        showlegend: true,
+        hoverinfo: 'none' // Desabilitar hover nos pontos da legenda
+    });
+});
+        // Modificar o layout para tema escuro
+        const layout = {
+            title: {
+                text: 'Notas por Aluno',
+                font: {
+                    color: 'white',
+                    size: 18,
+                    weight: 'bold'
+                },
+                x: 0.5,
+                y: 0.95
+            },
+            xaxis: {
+                title: {
+                    text: 'Aluno',
+                    font: {
+                        color: 'white',
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    standoff: 20
+                },
+                tickangle: -45,
+                color: 'white',
+                gridcolor: 'rgba(255, 255, 255, 0.1)',
+                type: 'category',
+                tickfont: {
+                    size: 11,
+                    color: 'rgba(255, 255, 255, 0.9)'
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Nota',
+                    font: {
+                        color: 'white',
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    standoff: 20
+                },
+                range: [0, 10],
+                color: 'white',
+                gridcolor: 'rgba(255, 255, 255, 0.1)',
+                tickfont: {
+                    size: 12,
+                    color: 'rgba(255, 255, 255, 0.9)'
+                },
+                zerolinecolor: 'rgba(255, 255, 255, 0.3)'
+            },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            legend: {
+                title: {
+                    text: 'Classificação',
+                    font: { 
+                        color: 'white',
+                        size: 14,
+                        weight: 'bold'
+                    }
+                },
+                font: { 
+                    color: 'white',
+                    size: 12
+                },
+                bgcolor: 'rgba(50, 50, 50, 0.7)',
+                bordercolor: 'rgba(255, 255, 255, 0.3)',
+                borderwidth: 1,
+                x: 1,
+                y: 1,
+                xanchor: 'right',
+                yanchor: 'top',
+                orientation: 'v',
+                itemsizing: 'constant',
+                itemwidth: 60,
+                tracegroupgap: 10
+            },
+            shapes: [
+                // Linha horizontal da média
+                {
+                    type: 'line',
+                    x0: -0.5,
+                    x1: nomesOrdenados.length - 0.5,
+                    y0: media,
+                    y1: media,
+                    line: {
+                        color: 'rgba(255, 80, 80, 0.8)',
+                        width: 2,
+                        dash: 'dash'
+                    }
+                }
+            ],
+            annotations: [
+                // Rótulo da linha média
+                {
+                    x: 0,
+                    y: media,
+                    text: `Média: ${media.toFixed(2)}`,
+                    showarrow: true,
+                    arrowhead: 7,
+                    arrowsize: 1,
+                    arrowwidth: 2,
+                    arrowcolor: 'red',
+                    ax: 60,
+                    ay: -30,
+                    font: {
+                        color: 'white',
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bgcolor: 'rgba(200, 0, 0, 0.7)',
+                    bordercolor: 'red',
+                    borderwidth: 2,
+                    borderpad: 4,
+                    opacity: 0.9
+                }
+            ],
+            margin: {
+                l: 60,
+                r: 50,
+                b: 120,
+                t: 60,
+                pad: 4
+            },
+            hovermode: 'closest'
+        };
+        
+        // Adicionar linhas verticais tracejadas
+        nomesOrdenados.forEach((nome, i) => {
+            layout.shapes.push({
+                type: 'line',
+                x0: i,
+                x1: i,
+                y0: 0,
+                y1: notasOrdenadas[i],
+                line: {
+                    color: 'rgba(180, 180, 180, 0.3)',
+                    width: 1,
+                    dash: 'dot'
+                }
+            });
+        });
+        
+        console.log("Dados do gráfico completo:", {
+            traces: traces,
+            layout: layout,
+            dataLen: notasAlunos.length
+        });
+        
+        // Configuração personalizada para o gráfico
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
+            toImageButtonOptions: {
+                format: 'png',
+                filename: 'notas_por_aluno_detalhado',
+                height: 500,
+                width: 900,
+                scale: 2
+            }
+        };
+        
+        Plotly.newPlot('notasChart', traces, layout, config)
+            .then(() => console.log("Gráfico completo carregado com sucesso"))
+            .catch(err => console.error("Erro ao renderizar gráfico completo:", err));
+    } catch (e) {
+        console.error("Erro ao criar o gráfico completo:", e);
+    }
+}
+            
+            // Verificar se Chart.js está disponível
+            if (typeof Chart === 'undefined') {
+                console.error("Chart.js não está carregado");
+                return;
+            }
+            
+            // Gráfico de barras para disciplinas 
+            if (disciplinasNomes.length > 0) {
+                const ctxDisciplinas = document.getElementById('disciplinasChart').getContext('2d');
+                if (ctxDisciplinas) {
+                    new Chart(ctxDisciplinas, {
+                        type: 'bar',
+                        data: {
+                            labels: disciplinasNomes,
+                            datasets: [{
+                                label: 'Percentual de Acertos',
+                                data: disciplinasPercentuais,
+                                backgroundColor: disciplinasPercentuais.map(perc => {
+                                    if (perc >= 70) return 'rgba(40, 167, 69, 0.7)';
+                                    else if (perc >= 50) return 'rgba(23, 162, 184, 0.7)';
+                                    else if (perc >= 30) return 'rgba(255, 193, 7, 0.7)';
+                                    else return 'rgba(220, 53, 69, 0.7)';
+                                }),
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#fff',
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#fff'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `${context.raw}% de acertos`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    console.error("Elemento Canvas para disciplinas não encontrado");
+                }
+            } else {
+                document.getElementById('disciplinasChart').parentNode.innerHTML = 
+                    '<div class="alert alert-warning">Não há dados de disciplinas para exibir.</div>';
+            }
+            
+            // Contar frequência de notas
+            const faixas = ['0-1', '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9', '9-10'];
+            const contagem = Array(10).fill(0);
+            
+            notasAlunos.forEach(nota => {
+                const indice = Math.min(Math.floor(nota), 9);
+                contagem[indice]++;
+            });
+            
+            // Gráfico de distribuição de notas
+            const ctxDistribuicao = document.getElementById('distribuicaoChart').getContext('2d');
+            if (ctxDistribuicao) {
+                new Chart(ctxDistribuicao, {
+                    type: 'bar',
+                    data: {
+                        labels: faixas,
+                        datasets: [{
+                            label: 'Alunos',
+                            data: contagem,
+                            backgroundColor: [
+                                'rgba(220, 53, 69, 0.7)',
+                                'rgba(220, 53, 69, 0.7)',
+                                'rgba(220, 53, 69, 0.7)',
+                                'rgba(108, 117, 125, 0.7)',
+                                'rgba(255, 193, 7, 0.7)',
+                                'rgba(255, 193, 7, 0.7)',
+                                'rgba(23, 162, 184, 0.7)',
+                                'rgba(40, 167, 69, 0.7)',
+                                'rgba(40, 167, 69, 0.7)',
+                                'rgba(40, 167, 69, 0.7)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#fff',
+                                    precision: 0
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Quantidade de Alunos',
+                                    color: '#fff'
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                },
+                                ticks: {
+                                    color: '#fff'
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Faixas de Notas',
+                                    color: '#fff'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.raw} aluno(s)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                console.error("Elemento Canvas para distribuição não encontrado");
+            }
+            
+            // Script para filtrar alunos na tabela
+            const searchInput = document.getElementById('searchAluno');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function() {
+                    const searchText = this.value.toLowerCase();
+                    const table = document.getElementById('alunosTable');
+                    const rows = table.getElementsByTagName('tr');
+                    
+                    for (let i = 1; i < rows.length; i++) {
+                        const nameCell = rows[i].getElementsByTagName('td')[0];
+                        if (nameCell) {
+                            const name = nameCell.textContent || nameCell.innerText;
+                            if (name.toLowerCase().indexOf(searchText) > -1) {
+                                rows[i].style.display = '';
+                            } else {
+                                rows[i].style.display = 'none';
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Certificar que o gráfico se ajusta corretamente
+            window.addEventListener('resize', function() {
+                if (typeof Plotly !== 'undefined') {
+                    Plotly.Plots.resize('notasChart');
+                }
+            });
+        
+            // Redimensionar após toda a página carregar
+            window.addEventListener('load', function() {
+                setTimeout(function() {
+                    if (typeof Plotly !== 'undefined') {
+                        Plotly.Plots.resize('notasChart');
+                    }
+                }, 500);
+            });
+        });
+        </script>
+        {% endblock %}
+      

@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Limpar Dados do Aplicativo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Limpar Dados do Aplicativo</h1>
+                <a href="{% url 'app_resultados' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Voltar para Resultados
+                </a>
+            </div>
+            
+            <!-- Card principal -->
+            <div class="card border-danger mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i> Atenção: Operação Irreversível
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <h5><i class="fas fa-exclamation-circle"></i> Esta ação não pode ser desfeita!</h5>
+                        <p>Você está prestes a excluir <strong>todos os dados de simulados</strong> enviados pelo aplicativo móvel.</p>
+                    </div>
+                    
+                    <p>Esta operação irá remover permanentemente:</p>
+                    <ul>
+                        <li>Todos os resultados de simulados enviados pelo aplicativo</li>
+                        <li>Todas as respostas detalhadas</li>
+                        <li>Todo o histórico de desempenho relacionado a esses simulados</li>
+                    </ul>
+                    
+                    <div class="alert alert-info">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Esta ação só afeta dados enviados pelo aplicativo. Simulados realizados na plataforma web não serão afetados.</p>
+                    </div>
+                    
+                    <!-- Estatísticas -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Resumo dos dados que serão excluídos:</h5>
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div class="py-3">
+                                        <h2 class="text-danger mb-0">{{ total_resultados }}</h2>
+                                        <p class="mb-0">Resultados de Simulados</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="py-3">
+                                        <h2 class="text-danger mb-0">{{ total_detalhes }}</h2>
+                                        <p class="mb-0">Respostas Detalhadas</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="py-3">
+                                        <h2 class="text-danger mb-0">{{ alunos_afetados }}</h2>
+                                        <p class="mb-0">Alunos Afetados</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Formulário de confirmação -->
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" id="confirmacao" name="confirmacao" required>
+                            <label class="form-check-label" for="confirmacao">
+                                Confirmo que desejo excluir <strong>permanentemente</strong> todos os dados de simulados enviados pelo aplicativo.
+                            </label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="fas fa-trash-alt"></i> Excluir Todos os Dados do Aplicativo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Informações adicionais -->
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-question-circle"></i> Precisa de ajuda?</h5>
+                    <p>Se você está tentando apenas remover resultados específicos, considere usar a página de resultados individual para excluir apenas os dados desejados.</p>
+                    <p class="mb-0">Para qualquer dúvida sobre esta operação, entre em contato com o suporte técnico.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script de confirmação adicional -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const confirmed = confirm('ATENÇÃO: Você está prestes a excluir TODOS os dados de simulados do aplicativo. Esta ação não pode ser desfeita. Deseja continuar?');
+        if (!confirmed) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

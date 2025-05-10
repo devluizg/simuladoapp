@@ -574,3 +574,185 @@ def debug_token_request(request):
         'content_type': request.content_type,
         'auth_header': request.META.get('HTTP_AUTHORIZATION', None),
     })
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def submit_resultado(request):
+    """Endpoint para receber resultados de simulados do aplicativo Flutter e sincronizar com o dashboard"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("====== RECEBENDO RESULTADO DO APP FLUTTER ======")
+    
+    try:
+        # Obter dados do request
+        data = request.data
+        aluno_id = data.get('aluno_id')
+        simulado_id = data.get('simulado_id')
+        versao = data.get('versao', 'versao1')
+        nota_final = data.get('nota_final', 0.0)
+        respostas_aluno = data.get('respostas_aluno', {})
+        gabarito = data.get('gabarito', {})
+        
+        # Log para depuração
+        logger.info(f"Dados recebidos: aluno={aluno_id}, simulado={simulado_id}, versao={versao}")
+        logger.info(f"Nota final: {nota_final}")
+        
+        # Verificar dados obrigatórios
+        if not aluno_id or not simulado_id:
+            logger.error("Dados incompletos: ID do aluno e do simulado são obrigatórios")
+            return Response(
+                {"error": "Dados incompletos: ID do aluno e do simulado são obrigatórios"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Verificar se aluno e simulado existem
+        try:
+            aluno = Student.objects.get(id=aluno_id)
+            simulado = Simulado.objects.get(id=simulado_id)
+            
+            logger.info(f"Aluno encontrado: {aluno.name}, Simulado: {simulado.titulo}")
+        except Student.DoesNotExist:
+            logger.error(f"Aluno com ID {aluno_id} não encontrado")
+            return Response(
+                {"error": f"Aluno com ID {aluno_id} não encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Simulado.DoesNotExist:
+            logger.error(f"Simulado com ID {simulado_id} não encontrado")
+            return Response(
+                {"error": f"Simulado com ID {simulado_id} não encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        # Verificar respostas e calcular acertos
+        acertos = 0
+        total_questoes = len(gabarito)
+        
+        for questao, resposta_aluno in respostas_aluno.items():
+            resposta_correta = gabarito.get(questao)
+            if resposta_aluno == resposta_correta:
+                acertos += 1
+        
+        # Processar a versão para armazenamento
+        if versao.startswith('versao'):
+            tipo_prova = versao.replace('versao', '')
+        else:
+            tipo_prova = '1'
+            
+        # 1. Salvar no modelo Resultado (usado pela API)
+        resultado = Resultado.objects.create(
+            aluno=aluno,
+            simulado=simulado,
+            pontuacao=float(nota_final),
+            total_questoes=total_questoes,
+            acertos=acertos,
+            versao=versao,
+            tipo_prova=tipo_prova
+        )
+        
+        logger.info(f"Resultado salvo com sucesso no modelo Resultado. ID={resultado.id}, Versão={versao}")
+        
+        # Salvar detalhes das respostas
+        detalhes_salvos = 0
+        for questao, resposta_aluno in respostas_aluno.items():
+            resposta_correta = gabarito.get(questao)
+            acertou = resposta_aluno == resposta_correta
+            
+            try:
+                # Encontrar a questão correspondente no simulado
+                questao_simulado = QuestaoSimulado.objects.filter(
+                    simulado=simulado, 
+                    ordem=int(questao)
+                ).first()
+                
+                if questao_simulado:
+                    questao_obj = questao_simulado.questao
+                    
+                    DetalhesResposta.objects.create(
+                        resultado=resultado,
+                        questao=questao_obj,
+                        ordem=questao,
+                        resposta_aluno=resposta_aluno,
+                        resposta_correta=resposta_correta,
+                        acertou=acertou
+                    )
+                    detalhes_salvos += 1
+            except Exception as e:
+                logger.error(f"Erro ao salvar detalhe da questão {questao}: {str(e)}")
+                
+        logger.info(f"Detalhes de resposta salvos: {detalhes_salvos}/{len(respostas_aluno)}")
+        
+        # 2. Sincronizar com o modelo StudentPerformance (usado pelo Dashboard)
+        try:
+            from classes.models import StudentPerformance, StudentAnswer
+            
+            # Criar ou atualizar o registro de desempenho
+            performance, created = StudentPerformance.objects.update_or_create(
+                student=aluno,
+                simulado=simulado,
+                defaults={
+                    'score': float(nota_final),
+                    'correct_answers': acertos,
+                    'total_questions': total_questoes,
+                    'versao': tipo_prova  # Salvar a versão como número (1, 2, 3, etc.)
+                }
+            )
+            
+            if created:
+                logger.info(f"Novo registro de desempenho criado para o aluno {aluno.name} com versão {tipo_prova}")
+            else:
+                logger.info(f"Registro de desempenho atualizado para o aluno {aluno.name} com versão {tipo_prova}")
+            
+            # Sincronizar também as respostas individuais
+            respostas_sincronizadas = 0
+            for questao, resposta_aluno in respostas_aluno.items():
+                resposta_correta = gabarito.get(questao)
+                acertou = resposta_aluno == resposta_correta
+                
+                try:
+                    questao_simulado = QuestaoSimulado.objects.filter(
+                        simulado=simulado, 
+                        ordem=int(questao)
+                    ).first()
+                    
+                    if questao_simulado:
+                        StudentAnswer.objects.update_or_create(
+                            student=aluno,
+                            simulado=simulado,
+                            question=questao_simulado,
+                            defaults={
+                                'chosen_option': resposta_aluno,
+                                'is_correct': acertou
+                            }
+                        )
+                        respostas_sincronizadas += 1
+                except Exception as e:
+                    logger.error(f"Erro ao sincronizar resposta individual para questão {questao}: {str(e)}")
+            
+            logger.info(f"Sincronização com StudentPerformance concluída. Respostas sincronizadas: {respostas_sincronizadas}")
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"Erro na sincronização com StudentPerformance: {str(e)}")
+            logger.error(traceback.format_exc())
+            # Não impedir a resposta de sucesso se a sincronização falhar
+        
+        # Retornar resposta de sucesso
+        logger.info("====== PROCESSAMENTO CONCLUÍDO COM SUCESSO ======")
+        return Response({
+            "success": True,
+            "resultado_id": resultado.id,
+            "performance_id": getattr(performance, 'id', None) if 'performance' in locals() else None,
+            "mensagem": "Resultado salvo com sucesso e sincronizado com dashboard",
+            "acertos": acertos,
+            "total": total_questoes,
+            "nota": float(nota_final),
+            "versao_salva": tipo_prova  # Adicionar a versão na resposta
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"Erro ao processar resultado: {str(e)}")
+        logger.error(traceback.format_exc())
+        logger.info("====== PROCESSAMENTO FALHOU ======")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
