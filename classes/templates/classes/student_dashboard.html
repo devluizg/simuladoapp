@@ -30,7 +30,6 @@
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h5 class="card-title">Média Geral</h5>
-                    <!-- Removido o símbolo de porcentagem -->
                     <h1>{{ media_geral|floatformat:2 }}</h1>
                 </div>
             </div>
@@ -67,7 +66,6 @@
                         <tr>
                             <td>{{ simulado.data|date:"d/m/Y H:i" }}</td>
                             <td>{{ simulado.simulado }}</td>
-                            <!-- Removido o símbolo de porcentagem -->
                             <td>{{ simulado.nota|floatformat:2 }}</td>
                             <td>{{ simulado.acertos }}/{{ simulado.total }}</td>
                             <td>
@@ -87,13 +85,14 @@
         </div>
     </div>
 
-    <!-- Gráfico de Progresso -->
+    <!-- Gráfico de Progresso Simplificado -->
     <div class="card mb-4">
-        <div class="card-header bg-dark text-white">
-            <h5 class="mb-0">Progresso ao Longo do Tempo</h5>
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Notas por Simulado</h5>
         </div>
-        <div class="card-body">
-            <canvas id="progressChart" height="100"></canvas>
+        <div class="card-body">            
+            <!-- Gráfico -->
+            <canvas id="progressChart" height="300"></canvas>
         </div>
     </div>
 
@@ -119,8 +118,11 @@
                         <tr>
                             <td>{{ simulado.data|date:"d/m/Y" }}</td>
                             <td>{{ simulado.simulado }}</td>
-                            <!-- Removido o símbolo de porcentagem -->
-                            <td>{{ simulado.nota|floatformat:2 }}</td>
+                            <td>
+                                <span class="badge {% if simulado.nota >= 7 %}bg-success{% elif simulado.nota >= 5 %}bg-warning{% else %}bg-danger{% endif %} rounded-pill px-3">
+                                    {{ simulado.nota|floatformat:2 }}
+                                </span>
+                            </td>
                             <td>{{ simulado.acertos }}/{{ simulado.total }}</td>
                             <td>
                                 <a href="{% url 'resultado_detalhes' simulado.fonte simulado.id %}" class="btn btn-sm btn-info">
@@ -140,69 +142,131 @@
     </div>
 </div>
 
-<!-- Script para o gráfico -->
-<div id="chart-data" 
-    data-labels="{{ progresso_labels }}" 
-    data-values="{{ progresso_valores }}"
-    data-simulados="{{ progresso_simulados_json }}"
-    style="display:none;">
-</div>
+<!-- Todos os dados do gráfico em um único script -->
+<script id="progresso-data" type="application/json">{{ progresso_json|safe }}</script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Obter dados do elemento escondido
-    var chartData = document.getElementById('chart-data');
-    var labelsString = chartData.getAttribute('data-labels');
-    var valuesString = chartData.getAttribute('data-values');
-    var simuladosString = chartData.getAttribute('data-simulados');
-    
-    // Converter strings em arrays
-    var labels = labelsString ? JSON.parse(labelsString) : [];
-    var values = valuesString ? JSON.parse(valuesString) : [];
-    var simuladosData = simuladosString ? JSON.parse(simuladosString) : [];
-    
-    // Configurar o gráfico
-    var ctx = document.getElementById('progressChart').getContext('2d');
-    
-    var chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Nota',  // Removido (%) do label
-                data: values,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.1
-            }]
-        },
-        options: {
+    try {
+        // Obter os dados do elemento script JSON
+        var progressoScript = document.getElementById('progresso-data');
+        
+        if (!progressoScript) {
+            console.error("Elemento progresso-data não encontrado");
+            return;
+        }
+        
+        // Analisar o JSON com todos os dados do progresso
+        var progressoData = {};
+        try {
+            progressoData = JSON.parse(progressoScript.textContent);
+            console.log("Dados de progresso carregados com sucesso:", progressoData);
+        } catch (e) {
+            console.error("Erro ao analisar dados do progresso:", e);
+            progressoData = {
+                labels: [], 
+                valores: [], 
+                simulados_info: []
+            };
+        }
+        
+        // Extrair os dados necessários
+        var labels = progressoData.labels || [];
+        var values = progressoData.valores || [];
+        var simuladosInfo = progressoData.simulados_info || [];
+        
+        // Preparar nomes dos simulados para o eixo X
+        var simuladoNames = [];
+        for (var i = 0; i < simuladosInfo.length; i++) {
+            simuladoNames.push(simuladosInfo[i].simulado || 'Simulado ' + (i+1));
+        }
+        
+        // Verificar se temos dados para mostrar o gráfico
+        if (labels.length === 0) {
+            // Nenhum simulado realizado
+            var chartContainer = document.getElementById('progressChart').parentNode;
+            chartContainer.innerHTML = `
+                <div class="alert alert-warning mb-0 text-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Nenhum simulado foi realizado ainda. Realize simulados para visualizar seu progresso.
+                </div>
+            `;
+            return;
+        }
+        
+        // Configurar o gráfico simplificado
+        var ctx = document.getElementById('progressChart').getContext('2d');
+        
+        var chartOptions = {
             scales: {
                 y: {
                     beginAtZero: true,
-                    max: 10  // Alterado de 100 para 10 assumindo que a escala é de 0-10
+                    max: 10,
+                    title: {
+                        display: true,
+                        text: 'Nota (0-10)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Simulados'
+                    }
                 }
             },
             plugins: {
+                legend: {
+                    display: false // Remove a legenda
+                },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            return 'Nota: ' + context.raw;  // Removido o % do tooltip
+                        title: function(context) {
+                            var index = context[0].dataIndex;
+                            return simuladosInfo[index]?.simulado || 'Simulado';
                         },
-                        afterLabel: function(context) {
-                            var index = context.dataIndex;
-                            var info = simuladosData[index] || {};
-                            
-                            return 'Simulado: ' + (info.simulado || '');
+                        label: function(context) {
+                            return 'Nota: ' + context.raw.toFixed(2);
                         }
                     }
                 }
-            }
+            },
+            responsive: true,
+            maintainAspectRatio: false
+        };
+        
+        // Criação do gráfico
+        var chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: simuladoNames,
+                datasets: [{
+                    data: values,
+                    borderColor: '#3861fb',
+                    backgroundColor: 'rgba(56, 97, 251, 0.1)',
+                    pointBackgroundColor: '#3861fb',
+                    pointBorderColor: '#fff',
+                    pointRadius: 5,
+                    borderWidth: 2,
+                    fill: false
+                }]
+            },
+            options: chartOptions
+        });
+        
+    } catch (error) {
+        console.error("Erro ao processar dados do gráfico:", error);
+        var chartContainer = document.getElementById('progressChart');
+        if (chartContainer && chartContainer.parentNode) {
+            chartContainer.parentNode.innerHTML = `
+                <div class="alert alert-danger text-center">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Ocorreu um erro ao carregar o gráfico: ${error.message}
+                </div>
+            `;
         }
-    });
+    }
 });
 </script>
 {% endblock %}

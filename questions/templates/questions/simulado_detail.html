@@ -23,14 +23,14 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for questao_idx in versoes.0.gabarito.keys %}
+                            {% for row in gabaritos_processados %}
                             <tr>
-                                <td>{{ questao_idx }}</td>
-                                <td class="text-center">{{ versoes.0.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
-                                <td class="text-center">{{ versoes.1.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
-                                <td class="text-center">{{ versoes.2.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
-                                <td class="text-center">{{ versoes.3.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
-                                <td class="text-center">{{ versoes.4.gabarito|get_item:questao_idx|get_item:'tipo1' }}</td>
+                                <td>{{ row.questao_idx }}</td>
+                                <td class="text-center">{{ row.versao_1 }}</td>
+                                <td class="text-center">{{ row.versao_2 }}</td>
+                                <td class="text-center">{{ row.versao_3 }}</td>
+                                <td class="text-center">{{ row.versao_4 }}</td>
+                                <td class="text-center">{{ row.versao_5 }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

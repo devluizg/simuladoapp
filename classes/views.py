@@ -1,4 +1,5 @@
 #classes/views.py
+from asyncio.log import logger
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -169,11 +170,73 @@ def student_delete(request, pk):
         return redirect('student_list')
     return render(request, 'classes/student_confirm_delete.html', {'student': student})
 
+def preparar_dados_progresso_aluno(simulados):
+    """
+    Prepara dados para o gráfico de progresso simplificado do aluno.
+    Retorna apenas os dados essenciais para um gráfico minimalista.
+    
+    Args:
+        simulados: Lista de simulados realizados pelo aluno
+        
+    Returns:
+        Dicionário com dados formatados para o gráfico simplificado
+    """
+    import json
+    from django.utils.safestring import mark_safe
+    
+    try:
+        # Verificar se há simulados
+        if not simulados:
+            # Sem simulados
+            return {
+                'labels': [],
+                'valores': [],
+                'simulados_info': []
+            }
+        
+        # Ordenar simulados por data (do mais antigo para o mais recente)
+        simulados_ordenados = sorted(simulados, key=lambda x: x['data'])
+        
+        # Extrair dados para o gráfico
+        datas = [sim['data'].strftime('%d/%m/%Y') for sim in simulados_ordenados]
+        notas = [float(sim['nota']) for sim in simulados_ordenados]
+        
+        # Dados simplificados dos simulados para tooltips
+        info_simulados = []
+        for sim in simulados_ordenados:
+            info_simulados.append({
+                'simulado': sim['simulado'],
+                'acertos': sim['acertos'],
+                'total': sim['total']
+            })
+        
+        # Retornar apenas os dados necessários para o gráfico simplificado
+        dados_grafico = {
+            'labels': datas,
+            'valores': notas,
+            'simulados_info': info_simulados
+        }
+        
+        return dados_grafico
+        
+    except Exception as e:
+        # Em caso de erro, retornar dados vazios para evitar quebras na UI
+        import logging
+        logging.error(f"Erro ao preparar dados do gráfico: {str(e)}")
+        
+        return {
+            'labels': [],
+            'valores': [],
+            'simulados_info': [],
+            'erro': str(e)
+        }
+
 @login_required
 def student_dashboard(request, student_id):
     import json
     from decimal import Decimal
     from collections import defaultdict
+    import logging
     
     student = get_object_or_404(Student, id=student_id, user=request.user)
     classes = student.classes.filter(user=request.user)
@@ -182,42 +245,29 @@ def student_dashboard(request, student_id):
     performances = StudentPerformance.objects.filter(student=student).order_by('-date_taken')
     
     # Obter os resultados do aplicativo Flutter
-    from api.models import Resultado
+    from api.models import Resultado, DetalhesResposta
     app_resultados = Resultado.objects.filter(aluno=student).order_by('-data_correcao')
     
-    # Transformar todos os resultados em um formato unificado
-    simulados_web = [
-        {
-            'data': p.date_taken,
-            'tipo': 'Web',
-            'simulado': p.simulado.titulo,
-            'simulado_id': p.simulado.id,
-            'nota': float(p.score),
-            'acertos': p.correct_answers,
-            'total': p.total_questions,
-            'id': p.id,
-            'fonte': 'web',
-            'versao': 'Padrão'
-        } for p in performances
-    ]
-    
-    simulados_app = [
-        {
-            'data': r.data_correcao, 
-            'tipo': 'App',
-            'simulado': r.simulado.titulo,
-            'simulado_id': r.simulado.id,
-            'nota': float(r.pontuacao),
-            'acertos': r.acertos,
-            'total': r.total_questoes,
-            'id': r.id,
-            'fonte': 'app',
-            'versao': r.versao if hasattr(r, 'versao') and r.versao else 'Padrão'
-        } for r in app_resultados
-    ]
+    # Verificar se cada resultado ainda existe antes de incluir
+    simulados_app = []
+    for r in app_resultados:
+        # Verificar se o resultado ainda tem detalhes de respostas
+        if DetalhesResposta.objects.filter(resultado=r).exists():
+            simulados_app.append({
+                'data': r.data_correcao, 
+                'tipo': 'App',
+                'simulado': r.simulado.titulo,
+                'simulado_id': r.simulado.id,
+                'nota': float(r.pontuacao),
+                'acertos': r.acertos,
+                'total': r.total_questoes,
+                'id': r.id,
+                'fonte': 'app',
+                'versao': r.versao if hasattr(r, 'versao') and r.versao else 'Padrão'
+            })
     
     # Combinar todos os simulados
-    todos_simulados_raw = simulados_web + simulados_app
+    todos_simulados_raw = simulados_app 
     
     # Agrupar por título de simulado e manter apenas o mais recente
     simulados_mais_recentes = {}
@@ -247,26 +297,20 @@ def student_dashboard(request, student_id):
     else:
         media_geral = 0
     
-    # Progresso ao longo do tempo (em ordem cronológica)
-    progresso_simulados = sorted(
-        simulados_mais_recentes.values(),
-        key=lambda x: x['data']
-    )[:10]  # Limitar a 10 para o gráfico
+    # Usar a função auxiliar simplificada para preparar dados do gráfico
+    dados_progresso = preparar_dados_progresso_aluno(todos_simulados)
     
-    # Preparar dados para o gráfico em formato JSON
-    from django.utils.safestring import mark_safe
-    
-    # Extrair labels (datas formatadas)
-    progresso_labels = json.dumps([sim['data'].strftime('%d/%m/%Y') for sim in progresso_simulados])
-    
-    # Extrair valores (notas)
-    progresso_valores = json.dumps([float(sim['nota']) for sim in progresso_simulados])
-    
-    # Dados completos para os tooltips
-    progresso_simulados_json = json.dumps([{
-        'simulado': sim['simulado'],
-        'versao': sim['versao']
-    } for sim in progresso_simulados])
+    # Preparar todos os dados em um único JSON para o template
+    try:
+        progresso_json = json.dumps(dados_progresso)
+    except Exception as e:
+        logging.error(f"Erro ao serializar dados do progresso: {str(e)}")
+        # Dados fallback caso ocorra erro
+        progresso_json = json.dumps({
+            'labels': [],
+            'valores': [],
+            'simulados_info': []
+        })
     
     context = {
         'student': student,
@@ -274,18 +318,85 @@ def student_dashboard(request, student_id):
         'total_simulados': total_simulados,
         'media_geral': media_geral,
         'simulados_recentes': simulados_recentes,
-        'progresso_simulados': progresso_simulados,
         'todos_simulados': todos_simulados,
         # Mantemos esses para compatibilidade
         'performances': performances,
         'app_resultados': app_resultados,
-        # Dados para o gráfico em formato JSON
-        'progresso_labels': mark_safe(progresso_labels),
-        'progresso_valores': mark_safe(progresso_valores),
-        'progresso_simulados_json': mark_safe(progresso_simulados_json)
+        # Todos os dados do gráfico simplificado em um único JSON
+        'progresso_json': progresso_json
     }
     
     return render(request, 'classes/student_dashboard.html', context)
+
+
+def normalizar_nivel(nivel):
+    """Normaliza o nível de dificuldade para um formato padrão"""
+    if not nivel:
+        return 'medio'
+        
+    nivel = str(nivel).lower()
+    
+    if nivel in ['facil', 'fácil', 'f']:
+        return 'facil'
+    elif nivel in ['medio', 'médio', 'm']:
+        return 'medio'
+    elif nivel in ['dificil', 'difícil', 'd']:
+        return 'dificil'
+    else:
+        return 'medio'  # padrão
+
+def calcular_estatisticas_nivel_disciplina(respostas, estatisticas_disciplina):
+    """
+    Calcula estatísticas de desempenho por nível de dificuldade e disciplina
+    
+    Args:
+        respostas: Lista de respostas do aluno
+        estatisticas_disciplina: Lista de estatísticas por disciplina
+        
+    Returns:
+        Lista de dicionários com estatísticas por nível de dificuldade para cada disciplina
+    """
+    resultado = []
+    
+    for disciplina_stats in estatisticas_disciplina:
+        disciplina = disciplina_stats['disciplina']
+        
+        # Inicializar contadores para cada nível
+        niveis = {
+            'facil': {'acertos': 0, 'total': 0},
+            'medio': {'acertos': 0, 'total': 0},
+            'dificil': {'acertos': 0, 'total': 0},
+        }
+        
+        # Processar respostas para esta disciplina
+        for resposta in respostas:
+            if resposta['disciplina'] == disciplina:
+                nivel_normalizado = normalizar_nivel(resposta.get('nivel', 'medio'))
+                
+                if nivel_normalizado in niveis:
+                    niveis[nivel_normalizado]['total'] += 1
+                    if resposta['acertou']:
+                        niveis[nivel_normalizado]['acertos'] += 1
+        
+        # Calcular percentuais
+        for nivel, dados in niveis.items():
+            if dados['total'] > 0:
+                dados['percentual'] = (dados['acertos'] / dados['total']) * 100
+            else:
+                dados['percentual'] = 0
+        
+        # Adicionar ao resultado
+        resultado.append({
+            'disciplina': disciplina,
+            'total_acertos': disciplina_stats['acertos'],
+            'total_questoes': disciplina_stats['total'],
+            'percentual_total': disciplina_stats['percentual'],
+            'facil': niveis['facil'],
+            'medio': niveis['medio'],
+            'dificil': niveis['dificil']
+        })
+        
+    return resultado
 
 @login_required
 def student_simulado_detail(request, student_id, simulado_id, fonte="web", resultado_id=None):
@@ -298,11 +409,51 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
     student = get_object_or_404(Student, id=student_id, user=request.user)
     simulado = get_object_or_404(Simulado, id=simulado_id)
     
+    # Função auxiliar para normalização de nomes de disciplinas e assuntos
+    def normalizar_nome(texto):
+        """Normaliza nomes de disciplinas e assuntos para formato consistente"""
+        if not texto:
+            return "Não definido"
+            
+        # Converter para título (primeira letra de cada palavra maiúscula)
+        texto = texto.strip().title()
+        
+        # Correções específicas para disciplinas
+        correcoes = {
+            'Biologia': 'Biologia',
+            'Matematica': 'Matemática',
+            'Fisica': 'Física',
+            'Quimica': 'Química',
+            'Historia': 'História',
+            'Portugues': 'Português',
+            'Ingles': 'Inglês',
+            'Espanhol': 'Espanhol',
+            'Geografia': 'Geografia',
+            'Filosofia': 'Filosofia',
+            'Sociologia': 'Sociologia'
+        }
+        
+        # Aplicar correções se o texto existir no dicionário
+        for chave, valor in correcoes.items():
+            if texto.lower() == chave.lower():
+                return valor
+        
+        return texto
+    
     # Inicializar variáveis para estatísticas
     acertos_por_disciplina = defaultdict(lambda: {"acertos": 0, "total": 0})
     acertos_por_assunto = defaultdict(lambda: {"acertos": 0, "total": 0})
     respostas = []
     resultado = None  # Inicializar a variável resultado
+    
+    # Função para mapear o código do nível para o nome por extenso
+    def mapear_nivel(nivel_codigo):
+        nivel_mapeado = {
+            'F': 'facil',
+            'M': 'medio',
+            'D': 'dificil'
+        }.get(nivel_codigo, 'medio')
+        return nivel_mapeado
     
     # Função auxiliar para obter o gabarito de uma versão específica
     def get_gabarito_versao(versao):
@@ -310,7 +461,14 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
             return {}
         
         try:
-            versao_indice = int(versao) - 1
+            # Verificar se a versão começa com 'versao' e extrair o número
+            if isinstance(versao, str) and versao.startswith('versao'):
+                versao_numero = versao.replace('versao', '')
+                versao_indice = int(versao_numero) - 1
+            else:
+                # Caso contrário, tentar converter diretamente
+                versao_indice = int(versao) - 1
+                
             if 0 <= versao_indice < len(simulado.gabaritos_gerados):
                 return simulado.gabaritos_gerados[versao_indice].get('gabarito', {})
             else:
@@ -319,6 +477,79 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
             logger.error(f"Erro ao obter gabarito da versão {versao}: {str(e)}")
         
         return {}
+    
+    # NOVO: Função para obter os dados da questão correta baseada na ordem e versão do simulado
+    def obter_dados_questao_correta(ordem, versao):
+        try:
+            # Converter a versão para índice (base 0)
+            versao_indice = None
+            if isinstance(versao, str) and versao.startswith('versao'):
+                versao_indice = int(versao.replace('versao', '')) - 1
+            else:
+                versao_indice = int(versao) - 1
+            
+            # Verificar se o índice da versão é válido
+            if not hasattr(simulado, 'gabaritos_gerados') or not simulado.gabaritos_gerados or versao_indice < 0 or versao_indice >= len(simulado.gabaritos_gerados):
+                logger.warning(f"Versão inválida ou gabaritos não gerados: {versao}")
+                return "Não definido", "Não definido", "medio"
+            
+            # Obter os dados da versão específica
+            versao_data = simulado.gabaritos_gerados[versao_indice]
+            
+            # Verificar se a estrutura de dados da versão é válida
+            if not isinstance(versao_data, dict) or 'questoes' not in versao_data:
+                # Tentar um fallback para a primeira versão
+                if simulado.gabaritos_gerados and len(simulado.gabaritos_gerados) > 0 and 'questoes' in simulado.gabaritos_gerados[0]:
+                    logger.warning(f"Usando ordem da primeira versão como fallback para versão {versao}")
+                    versao_data = simulado.gabaritos_gerados[0]
+                else:
+                    logger.error(f"Estrutura de dados inválida para versão {versao}")
+                    return "Não definido", "Não definido", "medio"
+            
+            # Obter a lista de questões na ordem desta versão específica
+            ordem_questoes = versao_data.get('questoes', [])
+            
+            # Verificar se temos uma lista válida de questões
+            if not ordem_questoes or not isinstance(ordem_questoes, list):
+                logger.error(f"Lista de questões inválida para versão {versao}")
+                return "Não definido", "Não definido", "medio"
+            
+            # Converter ordem para inteiro, se for string
+            ordem_int = ordem
+            if isinstance(ordem, str):
+                ordem_int = int(''.join(filter(str.isdigit, ordem)))
+            
+            # Índice ajustado (arrays são base 0, ordens são base 1)
+            indice = ordem_int - 1
+            
+            # Verificar se o índice é válido
+            if indice < 0 or indice >= len(ordem_questoes):
+                logger.error(f"Índice de questão inválido: {indice} (ordem {ordem}) para versão {versao} com {len(ordem_questoes)} questões")
+                return "Não definido", "Não definido", "medio"
+            
+            # Obter o ID da questão correspondente a esta ordem na versão específica
+            questao_id = ordem_questoes[indice]
+            
+            # Buscar a questão original do banco de dados
+            try:
+                questao = Questao.objects.get(id=questao_id)
+                disciplina = normalizar_nome(questao.disciplina if hasattr(questao, 'disciplina') else "")
+                assunto = normalizar_nome(questao.conteudo if hasattr(questao, 'conteudo') else "")
+                nivel = mapear_nivel(questao.nivel_dificuldade if hasattr(questao, 'nivel_dificuldade') else 'M')
+                
+                # Log para debug
+                logger.debug(f"Versão {versao}, Ordem {ordem}: Questão ID={questao_id}, Disciplina={disciplina}, Assunto={assunto}")
+                
+                return disciplina, assunto, nivel
+            except Questao.DoesNotExist:
+                logger.error(f"Questão ID {questao_id} não encontrada")
+                
+        except Exception as e:
+            logger.error(f"Erro ao obter dados da questão para ordem {ordem}, versão {versao}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+        
+        return "Não definido", "Não definido", "medio"
     
     # Verificar a fonte dos dados (app ou web)
     if fonte == "app":
@@ -334,11 +565,17 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
         # Obter as respostas detalhadas
         detalhes = DetalhesResposta.objects.filter(resultado=resultado).select_related('questao')
         
+        # Verificar se há detalhes antes de processar
+        if not detalhes.exists():
+            messages.warning(request, "Os detalhes deste resultado foram excluídos.")
+            return redirect('student_dashboard', student_id=student.id)
+    
         # Processar as respostas para estatísticas e display
         for detalhe in detalhes:
             questao = detalhe.questao
-            disciplina = questao.disciplina
-            assunto = questao.conteudo
+            
+            # Obter dados corretos da questão baseados na ordem e versão
+            disciplina, assunto, nivel_extenso = obter_dados_questao_correta(detalhe.ordem, versao_usada)
             
             # Incrementar contadores para estatísticas
             acertos_por_disciplina[disciplina]["total"] += 1
@@ -367,7 +604,8 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
                 'resposta_correta': resposta_correta,
                 'acertou': detalhe.acertou,
                 'disciplina': disciplina,
-                'assunto': assunto
+                'assunto': assunto,
+                'nivel': nivel_extenso
             })
         
         # Informações do desempenho
@@ -416,10 +654,12 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
         # Processar as respostas para estatísticas e display
         for answer in student_answers:
             questao_simulado = answer.question
-            questao = questao_simulado.questao
             
-            disciplina = questao.disciplina
-            assunto = questao.conteudo
+            # Obter dados corretos da questão baseados na ordem e versão
+            disciplina, assunto, nivel_extenso = obter_dados_questao_correta(questao_simulado.ordem, versao_usada)
+            
+            # Adicionar logs para debug
+            logger.debug(f"Questão {questao_simulado.ordem}: disciplina={disciplina}, assunto={assunto}")
             
             # Incrementar contadores para estatísticas
             acertos_por_disciplina[disciplina]["total"] += 1
@@ -430,7 +670,7 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
                 acertos_por_assunto[assunto]["acertos"] += 1
             
             # Determinar a resposta correta com base na versão
-            resposta_correta = questao.resposta_correta  # Valor padrão inicial
+            resposta_correta = answer.question.questao.resposta_correta  # Valor padrão inicial
             
             # Tentar obter o gabarito específico da versão para esta questão
             num_questao = str(questao_simulado.ordem)
@@ -442,13 +682,14 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
                     logger.debug(f"Usando gabarito da versão {versao_usada} para questão {num_questao}")
             
             respostas.append({
-                'questao': questao,
+                'questao': answer.question.questao,
                 'ordem': questao_simulado.ordem,
                 'resposta_aluno': answer.chosen_option,
                 'resposta_correta': resposta_correta,
                 'acertou': answer.is_correct,
                 'disciplina': disciplina,
-                'assunto': assunto
+                'assunto': assunto,
+                'nivel': nivel_extenso
             })
         
         # Adicionar informação de versão ao objeto performance para o template
@@ -457,6 +698,24 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
         else:
             # Se for um objeto do modelo, adicionar a versão como atributo
             performance.versao = versao_usada
+    
+    # Função para garantir a ordenação correta das respostas por número da questão
+    def ordem_numerica(item):
+        ordem = item['ordem']
+        # Converter para inteiro, independentemente do formato
+        if isinstance(ordem, str):
+            # Remover caracteres não numéricos, se existirem
+            apenas_numeros = ''.join(c for c in ordem if c.isdigit())
+            return int(apenas_numeros) if apenas_numeros else 0
+        return ordem if isinstance(ordem, int) else 0
+
+    # Ordenar questões numericamente
+    respostas = sorted(respostas, key=ordem_numerica)
+    
+    # Verificar se as questões e respostas estão completas - para debug
+    logger.debug(f"Total de respostas: {len(respostas)}")
+    for i, resp in enumerate(respostas[:5]):  # Mostrar as primeiras 5 para debug
+        logger.debug(f"Resposta {i+1}: ordem={resp['ordem']}, disciplina={resp['disciplina']}, assunto={resp['assunto']}")
     
     # Calcular percentuais para estatísticas
     estatisticas_disciplina = []
@@ -485,6 +744,9 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
     estatisticas_disciplina.sort(key=lambda x: x['percentual'], reverse=True)
     estatisticas_assunto.sort(key=lambda x: x['percentual'], reverse=True)
     
+    # NOVA ADIÇÃO: Calcular estatísticas por nível de dificuldade e disciplina
+    estatisticas_nivel_disciplina = calcular_estatisticas_nivel_disciplina(respostas, estatisticas_disciplina)
+    
     context = {
         'student': student,
         'simulado': simulado,
@@ -492,9 +754,10 @@ def student_simulado_detail(request, student_id, simulado_id, fonte="web", resul
         'respostas': respostas,
         'estatisticas_disciplina': estatisticas_disciplina,
         'estatisticas_assunto': estatisticas_assunto,
+        'estatisticas_nivel_disciplina': estatisticas_nivel_disciplina,  # Nova estatística adicionada
         'fonte': fonte,
-        'versao_usada': versao_usada or "Padrão",  # Adicionar a versão ao contexto
-        'resultado': resultado  # Adicionar o objeto resultado ao contexto
+        'versao_usada': versao_usada or "Padrão",
+        'resultado': resultado
     }
     
     return render(request, 'classes/student_simulado_detail.html', context)
@@ -587,10 +850,15 @@ def class_select_simulado(request, class_id):
     }
     
     return render(request, 'classes/class_select_simulado.html', context)
+
+
 @login_required
 def app_resultados_limpar(request):
     """Página para excluir todos os dados de resultados vindos do aplicativo Flutter."""
     from api.models import Resultado, DetalhesResposta
+    import logging
+    
+    logger = logging.getLogger(__name__)
     
     # Obter estatísticas para exibição
     total_resultados = Resultado.objects.filter(aluno__user=request.user).count()
@@ -603,24 +871,45 @@ def app_resultados_limpar(request):
         # Verificar se o usuário marcou a confirmação
         if confirmacao:
             try:
-                # Primeiro excluir os detalhes (chave estrangeira)
+                logger.info(f"Iniciando exclusão de dados do app para usuário {request.user.id}")
+                
+                # 1. Primeiro excluir os detalhes (chave estrangeira)
                 detalhes_excluidos = DetalhesResposta.objects.filter(
                     resultado__aluno__user=request.user
                 ).delete()
                 
-                # Depois excluir os resultados
+                # 2. Depois excluir os resultados
                 resultados_excluidos = Resultado.objects.filter(
                     aluno__user=request.user
                 ).delete()
                 
-                # Redirecionar com mensagem de sucesso
+                # 3. Limpar possíveis dados em cache da sessão
+                # Lista de chaves que podem conter dados relacionados
+                cache_keys = [
+                    'simulados_recentes', 
+                    'app_resultados', 
+                    'dashboard_data',
+                    'resultados_recentes'
+                ]
+                
+                for key in cache_keys:
+                    if key in request.session:
+                        del request.session[key]
+                
+                # Salvar mudanças na sessão
+                request.session.modified = True
+                
+                logger.info(f"Exclusão concluída para usuário {request.user.id}. Detalhes: {detalhes_excluidos}, Resultados: {resultados_excluidos}")
+                
+                # Redirecionar com mensagem de sucesso para a página de simulados
                 messages.success(
                     request, 
                     f"Dados excluídos com sucesso! Foram removidos {total_resultados} resultados e {total_detalhes} respostas detalhadas."
                 )
-                return redirect('app_resultados')
+                return redirect('class_list')  # Redirecionando para simulado_list em vez de dashboard
                 
             except Exception as e:
+                logger.error(f"Erro ao excluir dados para usuário {request.user.id}: {str(e)}")
                 messages.error(request, f"Erro ao excluir dados: {str(e)}")
         else:
             # Confirmação não marcada
@@ -1062,6 +1351,9 @@ def resultado_detalhes(request, fonte, resultado_id):
 def class_performance_dashboard(request, class_id, simulado_id):
     """Dashboard de desempenho da turma em um simulado específico"""
     from collections import defaultdict
+    from django.utils.safestring import mark_safe
+    import json
+    from api.models import Resultado, DetalhesResposta
     
     class_obj = get_object_or_404(Class, id=class_id, user=request.user)
     simulado = get_object_or_404(Simulado, id=simulado_id)
@@ -1086,6 +1378,16 @@ def class_performance_dashboard(request, class_id, simulado_id):
         simulado=simulado
     ).select_related('aluno')
     
+    # IMPORTANTE: Verificar se cada resultado do app tem detalhes associados
+    # Se não tiver, significa que foi parcialmente excluído
+    app_resultados_validos = []
+    for resultado in app_resultados:
+        if DetalhesResposta.objects.filter(resultado=resultado).exists():
+            app_resultados_validos.append(resultado)
+        else:
+            # Opcional: Excluir resultados sem detalhes para limpeza completa
+            resultado.delete()
+    
     # Dicionário para armazenar o melhor resultado por aluno
     # (chave: aluno_id, valor: dicionário com os dados do resultado)
     melhores_resultados = {}
@@ -1105,8 +1407,8 @@ def class_performance_dashboard(request, class_id, simulado_id):
         if aluno_id not in melhores_resultados or resultado["nota"] > melhores_resultados[aluno_id]["nota"]:
             melhores_resultados[aluno_id] = resultado
     
-    # Processar resultados do app
-    for res in app_resultados:
+    # Processar resultados do app (usando apenas os validados)
+    for res in app_resultados_validos:
         aluno_id = res.aluno.id
         resultado = {
             "aluno": res.aluno,
@@ -1122,6 +1424,11 @@ def class_performance_dashboard(request, class_id, simulado_id):
     
     # Converter o dicionário para lista
     todos_resultados = list(melhores_resultados.values())
+    
+    # Verificar se temos resultados para exibir
+    if not todos_resultados:
+        messages.info(request, "Não há dados de resultados para este simulado nesta turma.")
+        return redirect('class_select_simulado', class_id=class_id)
     
     # Consolidar estatísticas por disciplinas e assuntos da turma toda
     todas_disciplinas = defaultdict(lambda: {"acertos": 0, "total": 0})
@@ -1146,8 +1453,8 @@ def class_performance_dashboard(request, class_id, simulado_id):
                 todas_disciplinas[disciplina]["acertos"] += 1
                 todos_assuntos[assunto]["acertos"] += 1
     
-    # Processar respostas do app
-    for res in app_resultados:
+    # Processar respostas do app (apenas resultados válidos)
+    for res in app_resultados_validos:
         detalhes = DetalhesResposta.objects.filter(
             resultado=res
         ).select_related('questao')
@@ -1236,6 +1543,87 @@ def class_performance_dashboard(request, class_id, simulado_id):
     }
     
     return render(request, 'classes/class_performance_dashboard.html', context)
+
+@login_required
+def class_simulado_limpar(request, class_id, simulado_id):
+    """Excluir dados de um simulado específico para uma turma específica"""
+    from api.models import Resultado, DetalhesResposta
+    
+    class_obj = get_object_or_404(Class, id=class_id, user=request.user)
+    simulado = get_object_or_404(Simulado, id=simulado_id)
+    
+    # Verificar se o simulado está associado à turma
+    if not simulado.classes.filter(id=class_id).exists():
+        messages.error(request, "Este simulado não está associado a esta turma.")
+        return redirect('class_list')
+    
+    if request.method == 'POST':
+        confirmacao = request.POST.get('confirmacao')
+        
+        if confirmacao == 'on':
+            try:
+                # Obter alunos da turma
+                students = class_obj.students.all()
+                
+                # 1. Excluir dados do sistema web
+                performances = StudentPerformance.objects.filter(
+                    student__in=students,
+                    simulado=simulado
+                )
+                
+                # Obter IDs das performances para excluir respostas
+                performance_ids = list(performances.values_list('id', flat=True))
+                
+                # Excluir respostas
+                resposta_count = StudentAnswer.objects.filter(
+                    student__in=students,
+                    simulado=simulado
+                ).delete()[0]
+                
+                # Excluir performances
+                performance_count = performances.delete()[0]
+                
+                # 2. Excluir dados do app
+                # Obter resultados do app
+                resultados_app = Resultado.objects.filter(
+                    aluno__in=students,
+                    simulado=simulado
+                )
+                
+                # Obter IDs dos resultados para excluir detalhes
+                resultado_ids = list(resultados_app.values_list('id', flat=True))
+                
+                # Excluir detalhes de respostas
+                detalhes_count = DetalhesResposta.objects.filter(
+                    resultado__in=resultado_ids
+                ).delete()[0]
+                
+                # Excluir resultados
+                resultado_count = resultados_app.delete()[0]
+                
+                # Mostrar mensagem de sucesso
+                messages.success(
+                    request, 
+                    f"Dados excluídos com sucesso! Foram removidos {performance_count} resultados web e {resultado_count} resultados do app, "
+                    f"junto com {resposta_count} respostas web e {detalhes_count} detalhes do app."
+                )
+                
+                return redirect('class_select_simulado', class_id=class_id)
+                
+            except Exception as e:
+                messages.error(request, f"Erro ao excluir dados: {str(e)}")
+                return redirect('class_performance_dashboard', class_id=class_id, simulado_id=simulado_id)
+        else:
+            messages.error(request, "Por favor, marque a caixa de confirmação para confirmar a exclusão.")
+            return redirect('class_performance_dashboard', class_id=class_id, simulado_id=simulado_id)
+    
+    context = {
+        'class': class_obj,
+        'simulado': simulado,
+    }
+    
+    return render(request, 'classes/class_simulado_limpar.html', context)
+
 def generate_class_dashboard_charts(request, class_id, simulado_id):
     """
     Gera os dados para os gráficos do dashboard de desempenho da turma

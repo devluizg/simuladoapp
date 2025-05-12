@@ -80,10 +80,49 @@ document.addEventListener('DOMContentLoaded', function() {
         editor.style.width = '100%';
     });
 
-    // Auto-dismiss das mensagens de alerta após 5 segundos
-    setTimeout(function() {
-        $('.alert').alert('close');
-    }, 5000);
+    // Certifique-se de que todas as mensagens existentes sejam removidas
+    document.querySelectorAll('.alert').forEach(function(alert) {
+        // Fecha automaticamente após 5 segundos
+        setTimeout(function() {
+            if (alert && alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        }, 5000);
+        
+        // Adiciona listener para o botão de fechar
+        alert.querySelector('.btn-close')?.addEventListener('click', function() {
+            if (alert && alert.parentNode) {
+                alert.parentNode.removeChild(alert);
+            }
+        });
+    });
+    
+    // Para mensagens que aparecem após o carregamento da página
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                const addedNodes = Array.from(mutation.addedNodes);
+                addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        const alerts = node.classList?.contains('alert') 
+                            ? [node] 
+                            : Array.from(node.querySelectorAll('.alert'));
+                            
+                        alerts.forEach(function(alert) {
+                            setTimeout(function() {
+                                if (alert && alert.parentNode) {
+                                    alert.parentNode.removeChild(alert);
+                                }
+                            }, 5000);
+                        });
+                    }
+                });
+            }
+        });
+    });
+    
+    // Observa alterações no DOM para tratar novas mensagens
+    observer.observe(document.body, { childList: true, subtree: true });
 });
 </script>
 {% endblock %}

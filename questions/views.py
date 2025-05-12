@@ -315,24 +315,38 @@ def simulado_detail(request, pk):
     
     # Prepara os dados do gabarito para o template
     versoes = []
-    questao_range = []
+    gabaritos_processados = []
     
     if simulado.gabaritos_gerados:
-        # Determinar o número total de questões (usando a primeira versão)
-        num_questoes = len(simulado.gabaritos_gerados[0]['gabarito']) if simulado.gabaritos_gerados else 0
-        questao_range = range(1, num_questoes + 1)
-        
-        # Preparar dados de cada versão
+        # Processar os dados de gabarito para facilitar uso no template
         for versao_data in simulado.gabaritos_gerados:
-            versoes.append({
-                'gabarito': versao_data.get('gabarito', {})
-            })
+            versoes.append({'gabarito': versao_data.get('gabarito', {})})
+            
+        # Obter todas as chaves de questões da primeira versão
+        primeira_versao = simulado.gabaritos_gerados[0]
+        questao_indices = list(primeira_versao.get('gabarito', {}).keys())
+        
+        # Para cada questão, obter as respostas em cada versão
+        for questao_idx in questao_indices:
+            row = {'questao_idx': questao_idx}
+            
+            # Obter resposta para cada versão
+            for i in range(len(versoes)):
+                if i < len(simulado.gabaritos_gerados):
+                    gabarito = simulado.gabaritos_gerados[i].get('gabarito', {})
+                    questao_data = gabarito.get(questao_idx, {})
+                    resposta = questao_data.get('tipo1', '-')
+                    row[f'versao_{i+1}'] = resposta
+                else:
+                    row[f'versao_{i+1}'] = '-'
+                    
+            gabaritos_processados.append(row)
     
     return render(request, 'questions/simulado_detail.html', {
         'simulado': simulado,
         'questoes': questoes,
         'versoes': versoes,
-        'questao_range': questao_range
+        'gabaritos_processados': gabaritos_processados
     })
 
 logger = logging.getLogger(__name__)

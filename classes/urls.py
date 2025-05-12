@@ -35,4 +35,5 @@ urlpatterns = [
          name='class_dashboard_charts'),
     path('app-resultados/limpar/', views.app_resultados_limpar, name='app_resultados_limpar'),
     path('classes/<int:class_id>/desempenho/', views.class_select_simulado, name='class_select_simulado'),
+    path('classes/<int:class_id>/simulados/<int:simulado_id>/limpar/', views.class_simulado_limpar, name='class_simulado_limpar'),
 ]

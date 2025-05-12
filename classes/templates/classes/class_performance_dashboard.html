@@ -3,18 +3,22 @@
 {% block title %}Dashboard da Turma {{ class.name }} - {{ simulado.titulo }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Dashboard da Turma: {{ class.name }}</h1>
-        <div>
-            <a href="{% url 'class_list' %}" class="btn btn-primary">
-                <i class="fas fa-arrow-left"></i> Voltar para Turmas
-            </a>
-            <a href="{% url 'class_students' class.id %}" class="btn btn-primary">
-                <i class="fas fa-users"></i> Ver Alunos
-            </a>
-        </div>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Dashboard da Turma: {{ class.name }}</h1>
+    <div>
+        <a href="{% url 'class_list' %}" class="btn btn-primary">
+            <i class="fas fa-arrow-left"></i> Voltar para Turmas
+        </a>
+        <a href="{% url 'class_students' class.id %}" class="btn btn-primary">
+            <i class="fas fa-users"></i> Ver Alunos
+        </a>
+        <!-- Adicionar botão de excluir dados -->
+        <a href="{% url 'class_simulado_limpar' class.id simulado.id %}" class="btn btn-danger">
+            <i class="fas fa-trash"></i> Excluir Dados
+        </a>
     </div>
+</div>
 
     <div class="alert alert-info mb-4">
         <div class="d-flex align-items-center">
