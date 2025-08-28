@@ -7,24 +7,24 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <style>
     #busca-questoes::placeholder {
-        color: rgba(255, 255, 255, 0.7); 
-        font-style: italic; 
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
     }
 
     #busca-questoes {
-        color: white; 
+        color: white;
     }
 
     #busca-questoes:focus {
-        background-color: rgba(255, 255, 255, 0.1); 
-        outline: none; 
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); 
+        background-color: rgba(255, 255, 255, 0.1);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
     }
 
     body {
         background-color: #f8f9fa;
     }
-    
+
     .card {
         border: none;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -33,17 +33,17 @@
         display: flex;
         flex-direction: column;
     }
-    
+
     .card:hover {
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     }
-    
+
     .card-body {
         flex: 1 1 auto;
         overflow-y: auto;
         max-height: 70vh;
     }
-    
+
     .questao-preview {
         position: relative;
         max-height: 3.6em;
@@ -56,20 +56,25 @@
     }
 
     .questao-preview::after {
-        content: "...";
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        padding-left: 40px;
-        background: linear-gradient(to right, transparent, #343a40 50%);
+    content: "...";
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding-left: 40px;
+    background: linear-gradient(to right, transparent, #343a40 50%);
+    color: #adb5bd;
     }
 
     .questao-item {
+        background: linear-gradient(145deg, rgba(30, 32, 58, 0.5), rgba(30, 32, 58, 0.2));
+        border: 1px solid var(--border-color) !important;
+        padding: 1rem;
         transition: all 0.3s ease;
         border-radius: 0.5rem;
         margin-bottom: 1rem;
         width: 100%;
         word-break: break-word;
+        display: block !important; /* Garantir que cada item seja um bloco separado */
     }
 
     .questao-item:hover {
@@ -96,9 +101,12 @@
         font-size: 0.75em;
     }
 
-    .nivel-facil { background-color: #198754 !important; }
-    .nivel-medio { background-color: #ffc107 !important; }
-    .nivel-dificil { background-color: #dc3545 !important; }
+    .badge-disciplina { background-color: var(--color-secondary); }
+    .badge-conteudo { background-color: var(--color-primary); color: var(--bg-dark); }
+
+    .nivel-facil { background-color: var(--color-success) !important; color: var(--bg-dark) !important; }
+    .nivel-medio { background-color: var(--color-warning) !important; color: var(--bg-dark) !important; }
+    .nivel-dificil { background-color: var(--color-danger) !important; color: var(--text-light) !important; }
 
     .actions-wrapper {
         display: flex;
@@ -151,6 +159,23 @@
         font-size: 1.2rem;
     }
 
+    .btn-action-icon.btn-add {
+        border-color: var(--color-success) !important;
+        color: var(--color-success) !important;
+    }
+    .btn-action-icon.btn-add:hover {
+        background-color: var(--color-success) !important;
+        color: var(--bg-dark) !important;
+    }
+    .btn-action-icon.btn-danger-custom {
+        border-color: var(--color-danger) !important;
+        color: var(--color-danger) !important;
+    }
+    .btn-action-icon.btn-danger-custom:hover {
+        background: var(--color-danger) !important;
+        color: var(--text-light) !important;
+    }
+
     .questao-info {
         padding-right: 10px;
     }
@@ -160,7 +185,7 @@
         align-items: center;
         width: 100%;
     }
-    
+
     /* FIXED LAYOUT STYLES */
     /* Modificado: Proporções atualizadas para as colunas */
     .col-questoes-simulado {
@@ -170,7 +195,7 @@
         margin-bottom: 30px;
         float: left;
     }
-    
+
     .col-banco-questoes {
         flex: 0 0 51%;
         max-width: 51;
@@ -178,7 +203,7 @@
         margin-bottom: 30px;
         float: left;
     }
-    
+
     /* Container para as duas colunas */
     .colunas-container {
         display: flex;
@@ -187,7 +212,7 @@
         width: 100%;
         clear: both;
     }
-    
+
     /* Fix para containers de listas */
     #questoes-selecionadas, #questoes-disponiveis {
         width: 100%;
@@ -196,13 +221,14 @@
         display: flex;
         flex-direction: column;
     }
-    
+
     /* Fix para itens aninhados */
     .list-group-item {
         width: 100%;
         position: relative;
+        display: block !important; /* Forçar display block para evitar aninhamento */
     }
-    
+
     /* Garantir que questao-disponivel tenha o mesmo estilo */
     .questao-disponivel {
         transition: all 0.3s ease;
@@ -210,6 +236,7 @@
         margin-bottom: 1rem;
         width: 100%;
         word-break: break-word;
+        display: block !important; /* Garantir que cada item seja um bloco separado */
     }
 
     /* Clear fix para a linha */
@@ -218,26 +245,38 @@
         display: table;
         clear: both;
     }
+
+    /* Estilo para garantir que questões no banco que já estão no simulado fiquem ocultas */
+    .questao-disponivel[style*="display: none"],
+    .questao-disponivel.hidden {
+        display: none !important;
+        visibility: hidden !important;
+        width: 0 !important;
+        height: 0 !important;
+        opacity: 0 !important;
+        position: absolute !important;
+        overflow: hidden !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+    }
+
 </style>
 {% endblock %}
-
 {% block content %}
-<!-- CORREÇÃO: Removido o colchete extra que estava causando um erro de sintaxe -->
 <div class="container py-4">
     {% csrf_token %}
-    <!-- CORREÇÃO: Elemento para armazenar o ID do simulado com visibilidade mais proeminente -->
     <div id="simulado-container" data-simulado-id="{{ simulado.id }}" class="d-none">
         <!-- Elemento invisível mas acessível para JavaScript -->
     </div>
-    
+
     <!-- Informações do Simulado -->
     <div class="row g-4">
         <div class="col-12 mb-4">
-            <div class="card bg-dark text-light">
+            <div class="card text-light">
                 <div class="card-header">
                     <div class="d-flex justify-content-between align-items-center">
-                        <!-- CORREÇÃO: Adicionada exibição do ID para debug -->
-                        <h3 class="mb-0">{{ simulado.titulo }} <small class="text-muted">(ID: {{ simulado.id }})</small></h3>
+                        <h3 class="mb-0">{{ simulado.titulo }} <small class="text-light">(ID: {{ simulado.id }})</small></h3>
                         <div class="btn-group">
                             <button type="button" class="btn btn-success" id="salvar-simulado" data-simulado-id="{{ simulado.id }}">
                                 <i class="bi bi-save"></i> Salvar Alterações
@@ -254,7 +293,6 @@
                 <div class="card-body">
                     <form id="simulado-form">
                         {% csrf_token %}
-                        <!-- CORREÇÃO: Campo oculto com o ID do simulado -->
                         <input type="hidden" name="simulado_id" value="{{ simulado.id }}">
                         <div class="row">
                             <div class="col-md-6">
@@ -263,8 +301,7 @@
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Última modificação:</strong> {{ simulado.ultima_modificacao|date:"d/m/Y H:i" }}</p>
-                                <!-- CORREÇÃO: Exibir ID do simulado para debug -->
-                                <p class="text-muted"><small>ID do Simulado: {{ simulado.id }}</small></p>
+                                <p class="text-light"><small>ID do Simulado: {{ simulado.id }}</small></p>
                             </div>
                         </div>
                     </form>
@@ -276,22 +313,22 @@
         <div class="colunas-container">
             <!-- Área de Questões do Simulado -->
             <div class="col-questoes-simulado">
-                <div class="card bg-dark text-light">
+                <div class="card text-light">
                     <div class="card-header">
                         <h4 class="mb-0"><i class="bi bi-list-check"></i> Questões do Simulado</h4>
                     </div>
                     <div class="card-body">
                         <div id="questoes-selecionadas" class="list-group" data-simulado-id="{{ simulado.id }}">
                             {% for questao in questoes_selecionadas %}
-                                <div class="list-group-item bg-dark text-light questao-item border border-light" 
+                                <div class="list-group-item questao-item"
                                      data-id="{{ questao.id }}">
                                     <div class="d-flex align-items-start">
                                         <div class="questao-info">
                                             <div class="questao-badges">
                                                 <span class="badge bg-secondary">{{ forloop.counter }}</span>
-                                                <span class="badge bg-primary">{{ questao.disciplina }}</span>
-                                                <span class="badge bg-info">{{ questao.conteudo }}</span>
-                                                <span class="badge nivel-badge 
+                                                <span class="badge badge-disciplina">{{ questao.disciplina }}</span>
+                                                <span class="badge badge-conteudo">{{ questao.conteudo }}</span>
+                                                <span class="badge nivel-badge
                                                     {% if questao.nivel_dificuldade == 'F' %}nivel-facil
                                                     {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
                                                     {% else %}nivel-dificil{% endif %}">
@@ -299,11 +336,12 @@
                                                 </span>
                                             </div>
                                             <div class="questao-preview">
-                                                {{ questao.enunciado|safe|truncatewords:30 }}
+                                                <!-- Modificado para usar textContent ao invés de HTML -->
+                                                {{ questao.enunciado|striptags|safe|truncatechars:300 }}
                                             </div>
                                         </div>
-                                        <button class="btn btn-sm btn-outline-danger ms-2 remover-questao">
-                                            <i class="bi bi-x-lg"></i>
+                                        <button class="btn btn-sm btn-action-icon btn-danger-custom remover-questao">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -321,18 +359,18 @@
 
             <!-- Banco de Questões -->
             <div class="col-banco-questoes">
-                <div class="card bg-dark text-light">
+                <div class="card text-light">
                     <div class="card-header">
                         <h4 class="mb-0"><i class="bi bi-database"></i> Banco de Questões</h4>
                         <div class="mt-2">
-                            <input type="text" id="busca-questoes" class="form-control bg-dark text-light" 
+                            <input type="text" id="busca-questoes" class="form-control bg-dark text-light"
                                    placeholder="Buscar por disciplina, conteúdo ou nível...">
                         </div>
                     </div>
                     <div class="card-body">
                         <div id="questoes-disponiveis" class="list-group">
                             {% for questao in questoes_disponiveis %}
-                                <div class="list-group-item bg-dark text-light questao-item border border-light questao-disponivel" 
+                                <div class="list-group-item questao-item questao-disponivel"
                                      data-id="{{ questao.id }}"
                                      data-disciplina="{{ questao.disciplina|lower }}"
                                      data-conteudo="{{ questao.conteudo|lower }}"
@@ -340,9 +378,9 @@
                                      <div class="d-flex align-items-start">
                                         <div class="questao-info">
                                             <div class="questao-badges">
-                                                <span class="badge bg-primary">{{ questao.disciplina }}</span>
-                                                <span class="badge bg-info">{{ questao.conteudo }}</span>
-                                                <span class="badge nivel-badge 
+                                                <span class="badge badge-disciplina">{{ questao.disciplina }}</span>
+                                                <span class="badge badge-conteudo">{{ questao.conteudo }}</span>
+                                                <span class="badge nivel-badge
                                                     {% if questao.nivel_dificuldade == 'F' %}nivel-facil
                                                     {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
                                                     {% else %}nivel-dificil{% endif %}">
@@ -350,11 +388,12 @@
                                                 </span>
                                             </div>
                                             <div class="questao-preview">
-                                                {{ questao.enunciado|safe|truncatewords:30 }}
+                                                <!-- Modificado para usar textContent ao invés de HTML -->
+                                                {{ questao.enunciado|striptags|safe|truncatechars:300 }}
                                             </div>
                                         </div>
-                                        <button type="button" class="btn btn-sm btn-success adicionar-questao ms-2">
-                                            <i class="bi bi-plus-lg"></i>
+                                        <button type="button" class="btn btn-sm btn-action-icon btn-add adicionar-questao ms-2">
+                                            <i class="bi bi-plus-circle"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -378,7 +417,6 @@
             <div class="modal-body">
                 <form method="post" action="{% url 'questions:simulado_form_edit' simulado.id %}">
                     {% csrf_token %}
-                    <!-- CORREÇÃO: Campo oculto com o ID do simulado -->
                     <input type="hidden" name="simulado_id" value="{{ simulado.id }}">
                     {{ form.as_p }}
                     <div class="text-center">
@@ -393,379 +431,158 @@
     </div>
 </div>
 {% endblock %}
-
 {% block extra_scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const questoesSelecionadas = document.getElementById('questoes-selecionadas');
-        const questoesDisponiveis = document.getElementById('questoes-disponiveis');
-        const emptyState = document.getElementById('empty-state');
-        const questoesCount = document.getElementById('questoes-count');
-        const salvarBtn = document.getElementById('salvar-simulado');
-        const buscaInput = document.getElementById('busca-questoes');
-    
-        // Mapa para armazenar todas as questões
-        const todasQuestoes = new Map();
-    
-        // Função para inicializar o mapa de todas as questões
-        function inicializarTodasQuestoes() {
-            // Limpar o mapa primeiro
-            todasQuestoes.clear();
-            
-            // Log para debugging
-            console.log("Inicializando mapa de questões");
-            
-            // Adicionar questões disponíveis
-            questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
-                const id = questao.dataset.id;
-                if (id) {
-                    todasQuestoes.set(id, questao.cloneNode(true));
-                    console.log(`Adicionada questão disponível: ${id}`);
-                }
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    const questoesSelecionadas = document.getElementById('questoes-selecionadas');
+    const questoesDisponiveis = document.getElementById('questoes-disponiveis');
+    const emptyState = document.getElementById('empty-state');
+    const questoesCount = document.getElementById('questoes-count');
+    const salvarBtn = document.getElementById('salvar-simulado');
+    const buscaInput = document.getElementById('busca-questoes');
 
-            // Adicionar questões já selecionadas
-            questoesSelecionadas.querySelectorAll('.questao-item').forEach(questao => {
-                const id = questao.dataset.id;
-                if (id && !todasQuestoes.has(id)) {
-                    const novaQuestao = resetarQuestao(questao.cloneNode(true));
-                    todasQuestoes.set(id, novaQuestao);
-                    console.log(`Adicionada questão selecionada: ${id}`);
-                }
-            });
-
-            console.log(`Total de questões no mapa: ${todasQuestoes.size}`);
-            
-            // Log de todas as questões para verificação
-            console.log("IDs de todas as questões:");
-            Array.from(todasQuestoes.keys()).forEach(id => console.log(id));
-        }
-    
-        // Função para resetar uma questão para o estado de "disponível"
-        function resetarQuestao(questao) {
-            questao.classList.remove('questao-item');
-            questao.classList.add('questao-disponivel');
-            
-            // Remove o número da questão
-            const numeroBadge = questao.querySelector('.badge.bg-secondary');
-            if (numeroBadge) numeroBadge.remove();
-    
-            // Troca o botão de remover para adicionar
-            const btnContainer = questao.querySelector('.remover-questao');
-            if (btnContainer) {
-                btnContainer.className = 'btn btn-sm btn-success adicionar-questao ms-2';
-                btnContainer.innerHTML = '<i class="bi bi-plus-lg"></i>';
-            }
-    
-            return questao;
-        }
-    
-        // Função para atualizar a visibilidade das questões no banco
-        function atualizarVisibilidadeBanco() {
-            // Obter IDs das questões já selecionadas de maneira mais robusta
-            const questoesSelecionadasIds = new Set(
-                Array.from(questoesSelecionadas.querySelectorAll('.questao-item'))
-                    .map(q => q.dataset.id)
-                    .filter(id => id) // Filtrar IDs vazios ou indefinidos
-            );
-            
-            console.log("IDs de questões selecionadas:", Array.from(questoesSelecionadasIds));
-            
-            // Atualizar visibilidade das questões no banco
-            todasQuestoes.forEach((questao, id) => {
-                // Verificar se a questão existe no DOM
-                let questaoNoBanco = questoesDisponiveis.querySelector(`.questao-disponivel[data-id="${id}"]`);
-                
-                // Se a questão existe no banco
-                if (questaoNoBanco) {
-                    // Ocultar se já estiver selecionada
-                    const deveExibir = !questoesSelecionadasIds.has(id);
-                    questaoNoBanco.style.display = deveExibir ? '' : 'none';
-                    console.log(`Questão ${id} no banco: ${deveExibir ? 'visível' : 'oculta'}`);
-                } 
-                // Se a questão não existe no banco e não está selecionada, adicionar
-                else if (!questoesSelecionadasIds.has(id)) {
-                    questaoNoBanco = resetarQuestao(questao.cloneNode(true));
-                    questoesDisponiveis.appendChild(questaoNoBanco);
-                    console.log(`Questão ${id} adicionada ao banco`);
-                    
-                    // Assegurar que a questão esteja visível
-                    questaoNoBanco.style.display = '';
-                }
-                
-                // Garantir que o evento de clique esteja presente
-                if (questaoNoBanco && questaoNoBanco.style.display !== 'none') {
-                    const btnAdicionar = questaoNoBanco.querySelector('.adicionar-questao');
-                    if (btnAdicionar) {
-                        // Remover event listeners antigos para evitar duplicação
-                        btnAdicionar.removeEventListener('click', adicionarQuestaoAoSimulado);
-                        btnAdicionar.addEventListener('click', adicionarQuestaoAoSimulado);
-                    }
-                }
-            });
-        }
-        
-        // Função para adicionar questão ao simulado
-        function adicionarQuestaoAoSimulado(e) {
-            e.preventDefault();
-            e.stopPropagation(); // Impedir propagação do evento
-            
-            const questao = this.closest('.questao-disponivel');
-            if (!questao) {
-                console.error("Não foi possível encontrar a questão pai");
-                return;
-            }
-            
-            const questaoId = questao.dataset.id;
-            if (!questaoId) {
-                console.error("ID da questão não encontrado");
-                return;
-            }
-            
-            console.log(`Adicionando questão ${questaoId} ao simulado`);
-            
-            // Verificar se já existe no simulado (prevenção dupla)
-            if (questoesSelecionadas.querySelector(`.questao-item[data-id="${questaoId}"]`)) {
-                console.log(`Questão ${questaoId} já existe no simulado - ignorando`);
-                return;
-            }
-            
-            // Clonar a questão e adicionar ao simulado
-            const questaoClone = questao.cloneNode(true);
-            adicionarAoSimulado(questaoClone);
-            questoesSelecionadas.appendChild(questaoClone);
-            
-            // Esconder a questão no banco
-            questao.style.display = 'none';
-            
-            // Atualizar UI
-            atualizarNumeracao();
-            atualizarContador();
-            
-            console.log(`Questão ${questaoId} adicionada ao simulado com sucesso`);
-            
-            // Verificar contagem após adição
-            const novaContagem = questoesSelecionadas.querySelectorAll('.questao-item').length;
-            console.log(`Nova contagem de questões no simulado: ${novaContagem}`);
-        }
-        
-        // Função para remover questão do simulado
-        function removerQuestaoDoSimulado(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const btnRemover = e.target.closest('.remover-questao');
-            if (!btnRemover) return;
-            
-            const questao = btnRemover.closest('.questao-item');
-            if (!questao) return;
-            
-            const questaoId = questao.dataset.id;
-            if (!questaoId) {
-                console.error("ID da questão não encontrado");
-                return;
-            }
-            
-            console.log(`Removendo questão ${questaoId} do simulado`);
-            
-            // Remover a questão do simulado
-            questao.remove();
-            
-            // Mostrar a questão novamente no banco
-            let questaoNoBanco = questoesDisponiveis.querySelector(`.questao-disponivel[data-id="${questaoId}"]`);
-            if (questaoNoBanco) {
-                questaoNoBanco.style.display = '';
-                console.log(`Questão ${questaoId} agora visível no banco`);
-            } else {
-                // Se a questão não existe no banco, cria uma nova entrada
-                const questaoOriginal = todasQuestoes.get(questaoId);
-                if (questaoOriginal) {
-                    questaoNoBanco = resetarQuestao(questaoOriginal.cloneNode(true));
-                    questoesDisponiveis.appendChild(questaoNoBanco);
-                    
-                    const btnAdicionar = questaoNoBanco.querySelector('.adicionar-questao');
-                    if (btnAdicionar) {
-                        btnAdicionar.addEventListener('click', adicionarQuestaoAoSimulado);
-                    }
-                    console.log(`Questão ${questaoId} recriada no banco`);
-                } else {
-                    console.error(`Questão original ${questaoId} não encontrada no mapa`);
+    // Função para atualizar a numeração das questões selecionadas
+    function atualizarNumeracao() {
+        questoesSelecionadas.querySelectorAll('.questao-item').forEach((item, index) => {
+            let badge = item.querySelector('.badge.bg-secondary');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge bg-secondary';
+                const badgesContainer = item.querySelector('.questao-badges');
+                if (badgesContainer) {
+                    badgesContainer.insertBefore(badge, badgesContainer.firstChild);
                 }
             }
-            
-            // Atualizar UI
-            atualizarNumeracao();
-            atualizarContador();
-            
-            // Verificar contagem após remoção
-            const novaContagem = questoesSelecionadas.querySelectorAll('.questao-item').length;
-            console.log(`Nova contagem de questões no simulado: ${novaContagem}`);
-        }
-
-        // Função para adicionar ao simulado
-        function adicionarAoSimulado(item) {
-            item.classList.remove('questao-disponivel');
-            item.classList.add('questao-item');
-            
-            const badges = item.querySelector('.questao-badges');
-            if (badges) {
-                let numeroBadge = badges.querySelector('.badge.bg-secondary');
-                if (!numeroBadge) {
-                    numeroBadge = document.createElement('span');
-                    numeroBadge.className = 'badge bg-secondary';
-                    badges.insertBefore(numeroBadge, badges.firstChild);
-                }
-            }
-    
-            const btnContainer = item.querySelector('.adicionar-questao');
-            if (btnContainer) {
-                btnContainer.className = 'btn btn-sm btn-outline-danger ms-2 remover-questao';
-                btnContainer.innerHTML = '<i class="bi bi-x-lg"></i>';
-            }
-        }
-    
-        // Função para atualizar numeração
-        function atualizarNumeracao() {
-            questoesSelecionadas.querySelectorAll('.questao-item').forEach((item, index) => {
-                const badge = item.querySelector('.badge.bg-secondary');
-                if (badge) {
-                    badge.textContent = index + 1;
-                }
-            });
-        }
-    
-        // Função para atualizar contador
-        function atualizarContador() {
-            // Use querySelectorAll para garantir contagem correta
-            const count = questoesSelecionadas.querySelectorAll('.questao-item').length;
-            console.log(`Atualizando contador: ${count} questões`);
-            
-            if (questoesCount) {
-                questoesCount.textContent = count;
-            }
-            
-            if (emptyState) {
-                emptyState.style.display = count === 0 ? 'block' : 'none';
-            }
-        }
-
-        // Event listeners
-        
-        // Event listener para remover questão
-        questoesSelecionadas.addEventListener('click', function(e) {
-            if (e.target.closest('.remover-questao')) {
-                removerQuestaoDoSimulado(e);
-            }
+            badge.textContent = index + 1;
         });
+    }
 
-        // Event listener para busca de questões
-        buscaInput.addEventListener('input', function(e) {
-            const termo = e.target.value.toLowerCase();
-            questoesDisponiveis.querySelectorAll('.questao-disponivel').forEach(questao => {
-                const disciplina = questao.dataset.disciplina ? questao.dataset.disciplina.toLowerCase() : '';
-                const conteudo = questao.dataset.conteudo ? questao.dataset.conteudo.toLowerCase() : '';
-                const nivel = questao.dataset.nivel ? questao.dataset.nivel.toLowerCase() : '';
-                const texto = questao.textContent.toLowerCase();
-                
-                const mostrar = disciplina.includes(termo) || 
-                                conteudo.includes(termo) || 
-                                nivel.includes(termo) ||
-                                texto.includes(termo);
-    
-                // Verificar se a questão não está no simulado antes de exibir
-                const jaNoSimulado = questoesSelecionadas.querySelector(`[data-id="${questao.dataset.id}"]`);
-                questao.style.display = mostrar && !jaNoSimulado ? '' : 'none';
-            });
-        });
-    
-        // Event listener para salvar simulado
-        salvarBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Importante: use querySelectorAll para garantir que todas as questões são capturadas
-            const questoes = Array.from(questoesSelecionadas.querySelectorAll('.questao-item'))
-                .map(item => item.dataset.id)
-                .filter(id => id); // Filtrar itens undefined ou vazios
-            
-            console.log("Salvando questões:", questoes);
-            console.log(`Total de questões a salvar: ${questoes.length}`);
-            
-            if (questoes.length === 0) {
-                alert('Adicione pelo menos uma questão ao simulado antes de salvar.');
-                return;
-            }
-            
-            if (questoes.length > 45) {
-                alert('O simulado não pode ter mais que 45 questões.');
-                return;
-            }
-            
-            // Desabilitar o botão durante o salvamento
-            this.disabled = true;
-            const btnText = this.textContent;
-            this.textContent = "Salvando...";
+    // Função para atualizar o contador de questões e o estado de vazio
+    function atualizarContador() {
+        const count = questoesSelecionadas.children.length;
+        if (questoesCount) {
+            questoesCount.textContent = count;
+        }
+        if (emptyState) {
+            emptyState.style.display = count === 0 ? 'block' : 'none';
+        }
+    }
 
-            // Código de salvamento
-            fetch(`{% url 'questions:update_questoes_ordem' simulado.pk %}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                },
-                body: JSON.stringify({ questoes: questoes })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Resposta de rede não foi ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === 'success') {
-                    alert('Simulado salvo com sucesso!');
-                    window.location.href = "{% url 'questions:simulado_list' %}";
-                } else {
-                    alert('Erro ao salvar o simulado: ' + (data.message || 'Erro desconhecido'));
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                alert('Erro ao salvar o simulado: ' + error.message);
-            })
-            .finally(() => {
-                // Reabilitar o botão
-                this.disabled = false;
-                this.textContent = btnText;
-            });
-        });
-        
-        // Adicionar event listeners aos botões existentes no banco
-        function inicializarEventListeners() {
-            questoesDisponiveis.querySelectorAll('.questao-disponivel .adicionar-questao').forEach(btn => {
-                btn.removeEventListener('click', adicionarQuestaoAoSimulado); // Remove listeners duplicados
-                btn.addEventListener('click', adicionarQuestaoAoSimulado);
-            });
-        }
-        
-        // Inicializar o sistema
-        function inicializar() {
-            // Verificar se todos os elementos necessários estão presentes
-            if (!questoesSelecionadas || !questoesDisponiveis) {
-                console.error("Elementos essenciais não encontrados no DOM");
-                return;
-            }
-            
-            inicializarTodasQuestoes();
-            atualizarVisibilidadeBanco();
-            inicializarEventListeners();
-            atualizarContador();
-            atualizarNumeracao();
-            
-            console.log("Sistema inicializado com sucesso");
-        }
-        
-        // Chamar inicializar quando o DOM estiver pronto
-        inicializar();
+    // Delegação de eventos para a coluna de questões disponíveis
+    questoesDisponiveis.addEventListener('click', function(e) {
+        const addButton = e.target.closest('.adicionar-questao');
+        if (!addButton) return;
+
+        const questaoItem = addButton.closest('.questao-item');
+        if (!questaoItem) return;
+
+        // Mudar o botão para "remover"
+        addButton.innerHTML = '<i class="bi bi-trash"></i>';
+        addButton.classList.remove('btn-add', 'adicionar-questao');
+        addButton.classList.add('btn-danger-custom', 'remover-questao');
+        addButton.title = 'Remover';
+
+        // Mover o item para a lista de selecionadas
+        questoesSelecionadas.appendChild(questaoItem);
+
+        atualizarNumeracao();
+        atualizarContador();
     });
+
+    // Delegação de eventos para a coluna de questões do simulado
+    questoesSelecionadas.addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remover-questao');
+        if (!removeButton) return;
+
+        const questaoItem = removeButton.closest('.questao-item');
+        if (!questaoItem) return;
+
+        // Mudar o botão para "adicionar"
+        removeButton.innerHTML = '<i class="bi bi-plus-circle"></i>';
+        removeButton.classList.remove('btn-danger-custom', 'remover-questao');
+        removeButton.classList.add('btn-add', 'adicionar-questao');
+        removeButton.title = 'Adicionar';
+
+        // Remover a numeração
+        const numeroBadge = questaoItem.querySelector('.badge.bg-secondary');
+        if (numeroBadge) {
+            numeroBadge.remove();
+        }
+
+        // Mover o item de volta para a lista de disponíveis
+        questoesDisponiveis.appendChild(questaoItem);
+
+        atualizarNumeracao();
+        atualizarContador();
+    });
+
+    // Lógica de busca
+    buscaInput.addEventListener('input', function(e) {
+        const termo = e.target.value.toLowerCase().trim();
+        questoesDisponiveis.querySelectorAll('.questao-item').forEach(questao => {
+            const texto = questao.textContent.toLowerCase();
+            const corresponde = texto.includes(termo);
+            questao.style.display = corresponde ? '' : 'none';
+        });
+    });
+
+    // Lógica para salvar
+    salvarBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const questoes = Array.from(questoesSelecionadas.querySelectorAll('.questao-item'))
+            .map(item => item.dataset.id)
+            .filter(id => id);
+
+        if (questoes.length > 45) {
+            alert('O simulado não pode ter mais que 45 questões.');
+            return;
+        }
+
+        this.disabled = true;
+        this.textContent = "Salvando...";
+
+        fetch(`{% url 'questions:update_questoes_ordem' simulado.pk %}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ questoes: questoes })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Simulado salvo com sucesso!');
+                window.location.href = "{% url 'questions:simulado_list' %}";
+            } else {
+                alert('Erro ao salvar o simulado: ' + (data.message || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar o simulado.');
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.textContent = "Salvar Alterações";
+        });
+    });
+
+    // Inicialização
+    function init() {
+        // Ocultar questões do banco que já estão no simulado
+        const selecionadasIds = new Set(Array.from(questoesSelecionadas.querySelectorAll('.questao-item')).map(el => el.dataset.id));
+        questoesDisponiveis.querySelectorAll('.questao-item').forEach(item => {
+            if (selecionadasIds.has(item.dataset.id)) {
+                item.remove();
+            }
+        });
+
+        atualizarNumeracao();
+        atualizarContador();
+    }
+
+    init();
+});
 </script>
 {% endblock %}
