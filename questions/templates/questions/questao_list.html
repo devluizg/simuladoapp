@@ -5,109 +5,179 @@
 
 {% block extra_head %}
 <style>
-    .questao-preview {
-        max-height: 1.5em;
-        overflow: hidden;
-        display: -webkit-box;
-        display: box;
-        -webkit-line-clamp: 1;
-        line-clamp: 1;
-        -webkit-box-orient: vertical;
-        box-orient: vertical;
-        font-size: 0.9em;
-        color: #adb5bd;
-        margin-top: 0.25rem;
+    /* --- Estilos Específicos para a Página do Banco de Questões --- */
+
+    /* Cabeçalho da Página */
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding-bottom: 0.75rem;
+        margin-bottom: 2rem !important;
+        border-bottom: 2px solid;
+        border-image-slice: 1;
+        border-image-source: var(--accent-gradient);
+    }
+    .page-header h1 {
+        font-family: var(--font-title);
+        color: var(--text-light);
+        font-size: 2.5rem;
+        letter-spacing: 1px;
+        margin: 0;
     }
 
-    .questao-item {
+    /* Card de Filtro e Placeholders */
+    .filter-card .card-body {
+        padding: 1rem; /* Espaçamento interno mais reduzido */
+    }
+    .filter-card .form-control::placeholder {
+        color: #ffffff;
+        opacity: 0.7;
+    }
+    .filter-card .form-select {
+        color: var(--color-secondary);
+    }
+    .filter-card .form-select:focus,
+    .filter-card .form-select option {
+        color: var(--text-light);
+    }
+    .filter-card .btn-secondary:hover {
+        background-color: var(--color-primary);
+        border-color: var(--color-primary);
+        color: var(--bg-dark);
+    }
+
+    /* Item da Lista de Questão */
+    .questao-card .card-body {
+        padding: 0.75rem 1rem; /* Espaçamento interno mais reduzido */
+    }
+    .questao-card {
         transition: all 0.3s ease;
+        border-left: 3px solid var(--border-color);
     }
-
-    .questao-item:hover {
-        transform: translateX(5px);
-        border-color: rgba(255, 255, 255, 0.5) !important;
+    .questao-card:hover {
+        transform: translateY(-5px);
+        border-left-color: var(--color-primary);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
     }
-
     .questao-info {
         flex-grow: 1;
-        min-width: 0;  /* Permite que o texto seja truncado */
+        min-width: 0;
     }
 
-    .questao-badges {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.3rem;
+    /* Badges de Categoria */
+    .badge {
+        font-weight: 600;
+        padding: 0.3em 0.6em;
+        border-radius: 4px;
+    }
+    .badge-disciplina { background-color: var(--color-secondary); }
+    .badge-conteudo { background-color: var(--color-primary); color: var(--bg-dark); }
+
+    .nivel-badge { font-size: 0.8em; }
+    .nivel-facil { background-color: var(--color-success) !important; color: var(--bg-dark) !important; }
+    .nivel-medio { background-color: var(--color-warning) !important; color: var(--bg-dark) !important; }
+    .nivel-dificil { background-color: var(--color-danger) !important; color: var(--text-light) !important; }
+
+    /* Preview do Enunciado */
+    .questao-preview {
+        font-size: 0.9rem;
+        color: #ffffff;
+        margin-top: 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    .nivel-badge {
-        font-size: 0.75em;
-    }
-
-    .nivel-facil { background-color: #198754 !important; }
-    .nivel-medio { background-color: #ffc107 !important; color: #000 !important; }
-    .nivel-dificil { background-color: #dc3545 !important; }
-
+    /* Botões de Ação no Card */
     .actions-wrapper {
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-
-    .btn-add-to-simulado {
-        background-color: #28a745;
-        color: white;
+    .btn-action-icon {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        padding: 0.4rem 0.7rem;
+        border-radius: 4px;
+        transition: all 0.2s ease-in-out;
+    }
+    .btn-action-icon:hover {
+        color: var(--bg-dark);
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        transform: scale(1.1);
+    }
+    .btn-action-icon.btn-add {
+        border-color: var(--color-success);
+        color: var(--color-success);
+    }
+    .btn-action-icon.btn-add:hover {
+        background-color: var(--color-success);
+        border-color: var(--color-success);
+        color: var(--bg-dark);
+    }
+    .btn-action-icon.btn-edit-custom {
+        border-color: var(--border-color);
+        color: var(--color-primary);
+    }
+    .btn-action-icon.btn-edit-custom:hover {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: var(--bg-dark);
+    }
+    .btn-action-icon.btn-danger-custom {
+        border-color: var(--border-color);
+        color: var(--color-danger);
+    }
+    .btn-action-icon.btn-danger-custom:hover {
+        background: var(--color-danger);
+        border-color: var(--color-danger);
+        color: var(--text-light);
     }
 
-    .btn-nova-questao {
-        margin-bottom: 1rem;
+    /* Paginação */
+    .pagination .page-link {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-muted);
+        margin: 0 2px;
+        border-radius: 4px;
     }
-
-    /* Novo estilo para os placeholders */
-    #id_busca::placeholder,
-    #id_disciplina::placeholder,
-    #id_conteudo::placeholder,
-    #id_nivel_dificuldade::placeholder {
-        color: rgba(255, 255, 255, 0.7);
-        font-style: italic;
+    .pagination .page-link:hover {
+        background-color: var(--bg-surface);
+        color: var(--text-light);
+        border-color: var(--color-primary);
     }
-
-    /* Estilo para o texto digitado */
-    #id_busca,
-    #id_disciplina,
-    #id_conteudo,
-    #id_nivel_dificuldade {
-        color: white;
+    .pagination .page-item.active .page-link {
+        background-image: var(--accent-gradient);
+        border-color: var(--color-primary);
+        color: var(--text-light);
     }
-
-    /* Estilo para quando o input está focado */
-    #id_busca:focus,
-    #id_disciplina:focus,
-    #id_conteudo:focus,
-    #id_nivel_dificuldade:focus {
-        background-color: rgba(255, 255, 255, 0.1);
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+    .pagination .page-item.disabled .page-link {
+        background-color: transparent;
+        border-color: var(--border-color);
+        color: #6c757d;
     }
 </style>
-
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1 class="mb-4">Banco de Questões</h1>
+    <div class="page-header">
+        <h1>Banco de Questões</h1>
+        <a href="{% url 'questions:questao_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Cadastrar Nova Questão
+        </a>
+    </div>
 
-    <!-- Botão para cadastrar nova questão -->
-    <a href="{% url 'questions:questao_create' %}" class="btn btn-success btn-nova-questao">
-        <i class="bi bi-plus-circle"></i> Cadastrar Nova Questão
-    </a>
-
-    <!-- Formulário de Filtro -->
-    <div class="card bg-dark text-light mb-4">
+    <div class="card filter-card mb-3">
         <div class="card-body">
-            <form method="get" class="row g-3">
-                <!-- Campo de busca textual -->
-                <div class="col-md-12 mb-3">
+            <form method="get" class="row g-2 align-items-center">
+                <div class="col-md-12 mb-2">
                     {{ form.busca }}
                 </div>
                 <div class="col-md-4">
@@ -119,8 +189,8 @@
                 <div class="col-md-3">
                     {{ form.nivel_dificuldade }}
                 </div>
-                <div class="col-md-1">
-                    <button type="submit" class="btn btn-primary w-100">
+                <div class="col-md-1 d-grid">
+                    <button type="submit" class="btn btn-secondary">
                         <i class="bi bi-search"></i>
                     </button>
                 </div>
@@ -128,35 +198,33 @@
         </div>
     </div>
 
-    <!-- Lista de Questões -->
-    <div class="list-group">
+    <div>
         {% for questao in questoes %}
-            <div class="list-group-item bg-dark text-light questao-item mb-3 border border-secondary">
-                <div class="d-flex justify-content-between align-items-center">
+            <div class="card questao-card mb-1">
+                <div class="card-body d-flex justify-content-between align-items-center">
                     <div class="questao-info">
-                        <div class="questao-badges">
-                            <span class="badge bg-primary">{{ questao.disciplina }}</span>
-                            <span class="badge bg-info">{{ questao.conteudo }}</span>
-                            <span class="badge nivel-badge 
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                            <span class="badge badge-disciplina">{{ questao.disciplina }}</span>
+                            <span class="badge badge-conteudo">{{ questao.conteudo }}</span>
+                            <span class="badge nivel-badge
                                 {% if questao.nivel_dificuldade == 'F' %}nivel-facil
                                 {% elif questao.nivel_dificuldade == 'M' %}nivel-medio
                                 {% else %}nivel-dificil{% endif %}">
                                 {{ questao.get_nivel_dificuldade_display }}
                             </span>
                         </div>
-                        <!-- Modificação aqui -->
                         <div class="questao-preview" title="{{ questao.enunciado|striptags|escape }}" data-bs-toggle="tooltip" data-bs-placement="top">
                             {{ questao.enunciado|striptags|safe|truncatechars:100 }}
-                        </div>                        
+                        </div>
                     </div>
                     <div class="actions-wrapper">
-                        <button class="btn btn-sm btn-add-to-simulado" data-bs-toggle="modal" data-bs-target="#addToSimuladoModal" data-questao-id="{{ questao.pk }}">
+                        <button class="btn btn-sm btn-action-icon btn-add" data-bs-toggle="modal" data-bs-target="#addToSimuladoModal" data-questao-id="{{ questao.pk }}" title="Adicionar ao Simulado">
                             <i class="bi bi-plus-circle"></i>
                         </button>
-                        <a href="{% url 'questions:questao_update' questao.pk %}" class="btn btn-sm btn-outline-primary">
+                        <a href="{% url 'questions:questao_update' questao.pk %}" class="btn btn-sm btn-action-icon btn-edit-custom" title="Editar">
                             <i class="bi bi-pencil"></i>
                         </a>
-                        <a href="{% url 'questions:questao_delete' questao.pk %}" class="btn btn-sm btn-outline-danger">
+                        <a href="{% url 'questions:questao_delete' questao.pk %}" class="btn btn-sm btn-action-icon btn-danger-custom" title="Excluir">
                             <i class="bi bi-trash"></i>
                         </a>
                     </div>
@@ -167,9 +235,8 @@
         {% endfor %}
     </div>
 
-    <!-- Paginação -->
     {% if questoes.has_other_pages %}
-        <nav aria-label="Paginação das questões" class="mt-4">
+        <nav aria-label="Paginação das questões" class="mt-3">
             <ul class="pagination justify-content-center">
                 {% if questoes.has_previous %}
                     <li class="page-item">
@@ -209,18 +276,18 @@
 
 <!-- Modal para adicionar questão ao simulado -->
 <div class="modal fade" id="addToSimuladoModal" tabindex="-1" aria-labelledby="addToSimuladoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content bg-dark text-light">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addToSimuladoModalLabel">Adicionar Questão ao Simulado</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="addToSimuladoModalLabel" style="font-family: var(--font-title);">Adicionar ao Simulado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="addToSimuladoForm">
                     <input type="hidden" id="questaoId" name="questaoId">
                     <div class="mb-3">
                         <label for="simuladoSelect" class="form-label">Selecione o Simulado:</label>
-                        <select class="form-select bg-dark text-light" id="simuladoSelect" name="simuladoId" required>
+                        <select class="form-select" id="simuladoSelect" name="simuladoId" required>
                             <option value="">Escolha um simulado...</option>
                             {% for simulado in simulados %}
                                 <option value="{{ simulado.id }}">{{ simulado.titulo }}</option>
@@ -241,57 +308,59 @@
 {% block extra_scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var addToSimuladoModal = document.getElementById('addToSimuladoModal')
-    addToSimuladoModal.addEventListener('show.bs.modal', function (event) {
-        var button = event.relatedTarget
-        var questaoId = button.getAttribute('data-questao-id')
-        var modalQuestaoIdInput = addToSimuladoModal.querySelector('#questaoId')
-        modalQuestaoIdInput.value = questaoId
-    })
-
-    document.getElementById('addToSimuladoBtn').addEventListener('click', function() {
-        var form = document.getElementById('addToSimuladoForm');
-        var questaoId = form.questaoId.value;
-        var simuladoId = form.simuladoId.value;
-
-        if (!simuladoId) {
-            alert('Por favor, selecione um simulado.');
-            return;
-        }
-
-        fetch('{% url "questions:adicionar_questao_simulado" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                questao_id: questaoId,
-                simulado_id: simuladoId
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || 'Erro na resposta do servidor');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                alert('Questão adicionada com sucesso ao simulado!');
-                var modal = bootstrap.Modal.getInstance(addToSimuladoModal);
-                modal.hide();
-            } else {
-                throw new Error(data.error || 'Erro desconhecido');
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            alert('Ocorreu um erro ao adicionar a questão: ' + error.message);
+    var addToSimuladoModal = document.getElementById('addToSimuladoModal');
+    if (addToSimuladoModal) {
+        addToSimuladoModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            var questaoId = button.getAttribute('data-questao-id');
+            var modalQuestaoIdInput = addToSimuladoModal.querySelector('#questaoId');
+            modalQuestaoIdInput.value = questaoId;
         });
-    });
+
+        document.getElementById('addToSimuladoBtn').addEventListener('click', function() {
+            var form = document.getElementById('addToSimuladoForm');
+            var questaoId = form.questaoId.value;
+            var simuladoId = form.simuladoId.value;
+
+            if (!simuladoId) {
+                alert('Por favor, selecione um simulado.');
+                return;
+            }
+
+            fetch('{% url "questions:adicionar_questao_simulado" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    questao_id: questaoId,
+                    simulado_id: simuladoId
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Erro na resposta do servidor');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    alert('Questão adicionada com sucesso ao simulado!');
+                    var modal = bootstrap.Modal.getInstance(addToSimuladoModal);
+                    modal.hide();
+                } else {
+                    throw new Error(data.error || 'Erro desconhecido');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Ocorreu um erro ao adicionar a questão: ' + error.message);
+            });
+        });
+    }
 
     // Inicializa os tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -299,18 +368,22 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
 
-    // Adiciona classes do Bootstrap aos campos do formulário
+    // Adiciona classes do Bootstrap aos campos do formulário Django
     const formFields = [
-        '{{ form.busca.id_for_label }}',  // Adicionado o novo campo
-        '{{ form.disciplina.id_for_label }}',
-        '{{ form.conteudo.id_for_label }}',
-        '{{ form.nivel_dificuldade.id_for_label }}'
+        'id_busca',
+        'id_disciplina',
+        'id_conteudo',
+        'id_nivel_dificuldade'
     ];
 
     formFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
         if (field) {
-            field.classList.add('form-control', 'bg-dark', 'text-light');
+            if (field.tagName === 'SELECT') {
+                field.classList.add('form-select');
+            } else {
+                field.classList.add('form-control');
+            }
         }
     });
 });
