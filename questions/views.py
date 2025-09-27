@@ -57,8 +57,10 @@ def dashboard(request):
 def questao_list(request):
     form = QuestaoFilterForm(request.GET)
 
-    # Filtrar apenas as questões do usuário atual
-    questoes = Questao.objects.filter(professor=request.user)
+    # ✅ MODIFICADO: Incluir questões públicas + questões do usuário
+    questoes = Questao.objects.filter(
+        models.Q(professor=request.user) | models.Q(professor__isnull=True)
+    )
 
     if form.is_valid():
         # Filtrar por busca textual se o campo estiver presente
@@ -85,13 +87,31 @@ def questao_list(request):
         if form.cleaned_data.get('nivel_dificuldade'):
             questoes = questoes.filter(nivel_dificuldade=form.cleaned_data['nivel_dificuldade'])
 
+    # ✅ ADICIONADO: Ordenar questões próprias primeiro, depois públicas
+    questoes = questoes.extra(
+        select={'is_own': f"CASE WHEN professor_id = {request.user.id} THEN 0 ELSE 1 END"}
+    ).order_by('is_own', '-data_criacao')
+
     # Paginação
     paginator = Paginator(questoes, 10)
     page = request.GET.get('page')
     questoes = paginator.get_page(page)
 
-    # Obter simulados do professor atual
-    simulados = Simulado.objects.filter(professor=request.user)
+    # Obter simulados do professor atual, excluindo os arquivados
+    import json
+    import os
+    from django.conf import settings
+
+    arquivados_path = os.path.join(settings.BASE_DIR, 'arquivados.json')
+    arquivado_ids = []
+    if os.path.exists(arquivados_path):
+        with open(arquivados_path, 'r') as f:
+            try:
+                arquivado_ids = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    simulados = Simulado.objects.filter(professor=request.user).exclude(id__in=arquivado_ids)
 
     context = {
         'questoes': questoes,
@@ -139,7 +159,14 @@ def adicionar_questao_simulado(request):
         if not questao_id or not simulado_id:
             return JsonResponse({'success': False, 'error': 'IDs de questão e simulado são necessários.'}, status=400)
 
-        questao = Questao.objects.get(id=questao_id, professor=request.user)
+        # ✅ MODIFICADO: Buscar questão pública OU do usuário
+        try:
+            questao = Questao.objects.filter(
+                models.Q(professor=request.user) | models.Q(professor__isnull=True)
+            ).get(id=questao_id)
+        except Questao.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Questão não encontrada ou sem permissão.'}, status=404)
+
         simulado = Simulado.objects.get(id=simulado_id, professor=request.user)
 
         # Verifica se a questão já está no simulado
@@ -160,8 +187,6 @@ def adicionar_questao_simulado(request):
 
         return JsonResponse({'success': True})
 
-    except Questao.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Questão não encontrada.'}, status=404)
     except Simulado.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Simulado não encontrado.'}, status=404)
     except Exception as e:
@@ -170,7 +195,16 @@ def adicionar_questao_simulado(request):
 @login_required
 def questao_update(request, pk):
     """View para atualizar uma questão existente."""
-    questao = get_object_or_404(Questao, pk=pk, professor=request.user)
+    questao = get_object_or_404(Questao, pk=pk)
+
+    # ✅ CORRIGIDO: Proibir edição de questões públicas (exceto para staff)
+    if questao.professor is None:  # Questão pública
+        if not request.user.is_staff:
+            messages.error(request, 'Questões públicas não podem ser editadas por usuários normais.')
+            return redirect('questions:questao_list')
+    elif questao.professor != request.user and not request.user.is_staff:  # Questão de outro usuário
+        messages.error(request, 'Você não tem permissão para editar esta questão.')
+        return redirect('questions:questao_list')
 
     if request.method == 'POST':
         form = QuestaoForm(request.POST, request.FILES, instance=questao)
@@ -195,7 +229,12 @@ def questao_update(request, pk):
 @login_required
 def questao_delete(request, pk):
     """View para excluir uma questão contornando o problema da tabela inexistente."""
-    questao = get_object_or_404(Questao, pk=pk, professor=request.user)
+    questao = get_object_or_404(Questao, pk=pk)
+
+    # ✅ CORRIGIDO: Permitir exclusão de questões próprias OU questões públicas OU se for staff
+    if questao.professor and questao.professor != request.user and not request.user.is_staff:
+        messages.error(request, 'Você não tem permissão para excluir esta questão.')
+        return redirect('questions:questao_list')
 
     if request.method == 'POST':
         try:
@@ -224,8 +263,47 @@ def questao_delete(request, pk):
 @login_required
 def simulado_list(request):
     """View para listar simulados."""
-    simulados = Simulado.objects.filter(professor=request.user).order_by('-data_criacao')
+    import json
+    import os
+    from django.conf import settings
+
+    # Caminho para o arquivo de simulados arquivados
+    arquivados_path = os.path.join(settings.BASE_DIR, 'arquivados.json')
+
+    arquivado_ids = []
+    if os.path.exists(arquivados_path):
+        with open(arquivados_path, 'r') as f:
+            try:
+                arquivado_ids = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    # Obter simulados do professor e excluir os arquivados
+    simulados = Simulado.objects.filter(professor=request.user).exclude(id__in=arquivado_ids).order_by('-data_criacao')
+
     return render(request, 'questions/simulado_list.html', {
+        'simulados': simulados
+    })
+
+@login_required
+def archived_simulado_list(request):
+    """View para listar simulados arquivados."""
+    import json
+    import os
+    from django.conf import settings
+
+    arquivados_path = os.path.join(settings.BASE_DIR, 'arquivados.json')
+    arquivado_ids = []
+    if os.path.exists(arquivados_path):
+        with open(arquivados_path, 'r') as f:
+            try:
+                arquivado_ids = json.load(f)
+            except json.JSONDecodeError:
+                pass
+
+    simulados = Simulado.objects.filter(professor=request.user, id__in=arquivado_ids).order_by('-data_criacao')
+
+    return render(request, 'questions/archived_simulado_list.html', {
         'simulados': simulados
     })
 
@@ -261,11 +339,14 @@ def simulado_edit(request, pk):
 
     questoes_selecionadas = simulado.questoes.all().order_by('questaosimulado__ordem')
 
+    # ✅ MODIFICADO: Incluir questões públicas + questões do usuário
     questoes_disponiveis = Questao.objects.filter(
-        professor=request.user
+        models.Q(professor=request.user) | models.Q(professor__isnull=True)
     ).exclude(
         id__in=questoes_selecionadas.values_list('id', flat=True)
-    ).order_by('disciplina', 'conteudo')
+    ).extra(
+        select={'is_own': f"CASE WHEN professor_id = {request.user.id} THEN 0 ELSE 1 END"}
+    ).order_by('is_own', 'disciplina', 'conteudo')
 
     if request.method == 'POST':
         form = SimuladoForm(request.POST, instance=simulado, user=request.user)
@@ -439,8 +520,8 @@ def update_questoes_ordem(request, pk):
             }, status=400)
 
         questoes_validas = set(Questao.objects.filter(
-            id__in=questoes,
-            professor=request.user
+            models.Q(professor=request.user) | models.Q(professor__isnull=True),
+            id__in=questoes
         ).values_list('id', flat=True))
 
         questoes_invalidas = set(questoes) - questoes_validas
