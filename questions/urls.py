@@ -6,16 +6,17 @@ app_name = 'questions'
 urlpatterns = [
     # Dashboard
     path('', views.dashboard, name='questions_dashboard'),
-    
+
     # Questões
     path('questoes/', views.questao_list, name='questao_list'),
     path('questoes/nova/', views.questao_create, name='questao_create'),
     path('questoes/<int:pk>/editar/', views.questao_update, name='questao_update'),
     path('questoes/<int:pk>/excluir/', views.questao_delete, name='questao_delete'),
-    
+
     # Simulados
     path('simulados/', views.simulado_list, name='simulado_list'),
     path('simulados/novo/', views.simulado_create, name='simulado_create'),
+    path('simulados/arquivados/', views.archived_simulado_list, name='archived_simulado_list'),
     path('simulados/<int:pk>/', views.simulado_detail, name='simulado_detail'),
     path('simulados/<int:pk>/editar/', views.simulado_edit, name='simulado_edit'),
     path('simulados/<int:pk>/excluir/', views.simulado_delete, name='simulado_delete'),
@@ -23,9 +24,17 @@ urlpatterns = [
     path('simulado/<int:pk>/pdf/', views.gerar_pdf, name='simulado_pdf'),
     path('adicionar-questao-simulado/', views.adicionar_questao_simulado, name='adicionar_questao_simulado'),
     path('simulado/form/', views.simulado_form, name='simulado_form'),
-    path('simulado/form/<int:pk>/', views.simulado_form, name='simulado_form_edit'),
+    path('simulado/form/<int:pk>/', views.simulado_form, name='simulado_form_edit'),path('simulado/<int:pk>/pdf/confirmar/', views.confirm_regenerate, name='confirm_regenerate'),
 
-    
     # AJAX
     path('simulados/<int:pk>/atualizar-ordem/', views.update_questoes_ordem, name='update_questoes_ordem'),
+
+    # URLs do sistema de gabaritos
+    path('simulado/<int:pk>/gabaritos/', views.simulado_gabaritos_historico, name='simulado_gabaritos_historico'),
+    path('simulado/<int:pk>/gabaritos/<uuid:versao_id>/', views.visualizar_gabarito_versao, name='visualizar_gabarito_versao'),
+    path('simulado/<int:pk>/gabaritos/comparar/', views.comparar_versoes_gabarito, name='comparar_versoes_gabarito'),
+
+    # URLs AJAX para gerenciamento de gabaritos
+    path('simulado/<int:pk>/gabaritos/definir-oficial/', views.definir_gabarito_oficial, name='definir_gabarito_oficial'),
+    path('simulado/<int:pk>/gabaritos/<uuid:versao_id>/excluir/', views.excluir_versao_gabarito, name='excluir_versao_gabarito'),
 ]
